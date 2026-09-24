@@ -35,6 +35,21 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ onFilesSelected }) => {
 
       <div
         onClick={handleClick}
+        onDragOver={(e) => {
+          e.preventDefault();
+          useStore.getState().setDraggingOver(true);
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          useStore.getState().setDraggingOver(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          useStore.getState().setDraggingOver(false);
+          if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            onFilesSelected(e.dataTransfer.files);
+          }
+        }}
         className={`w-full h-full flex flex-col items-center justify-center rounded-[6px] border-2 border-dashed transition-all duration-100 cursor-pointer ${
           isDraggingOver
             ? "border-[var(--accent-green)] bg-[var(--accent-green)]/5 scale-[0.99]"

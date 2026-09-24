@@ -16,6 +16,9 @@ export function useTauriEvents() {
   const setSummaryModal = useStore((s) => s.setSummaryModal);
 
   useEffect(() => {
+    if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) {
+      return;
+    }
     let unlistenAll: Array<() => void> = [];
 
     const setup = async () => {

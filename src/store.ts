@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
+import { isTauri } from "./utils";
 import {
   BatchFinishedPayload,
   CompressionConfig,
@@ -157,34 +158,37 @@ export const useStore = create<TinyPressState>((set, get) => ({
   },
 
   resolveConflict: async (id, resolution) => {
-    try {
-      await invoke("resolve_file_conflict", {
-        taskId: id,
-        resolution,
-      });
-      set((state) => {
-        const task = state.tasks[id];
-        if (!task) return state;
-        return {
-          tasks: {
-            ...state.tasks,
-            [id]: {
-              ...task,
-              status: resolution === "skip" ? "completed" : "processing",
-            },
-          },
-        };
-      });
-    } catch (err) {
-      console.error("Resolve conflict failed:", err);
+    if (isTauri()) {
+      try {
+        await invoke("resolve_file_conflict", {
+          taskId: id,
+          resolution,
+        });
+      } catch (err) {
+        console.error("Resolve conflict failed:", err);
+      }
     }
+    set((state) => {
+      const task = state.tasks[id];
+      if (!task) return state;
+      return {
+        tasks: {
+          ...state.tasks,
+          [id]: {
+            ...task,
+            status: resolution === "skip" ? "completed" : "processing",
+          },
+        },
+      };
+    });
   },
 
   updateConfig: (partial) => {
     set((state) => {
       const newConfig = { ...state.config, ...partial };
-      // 50ms 輕度防抖同步至後端
-      invoke("update_active_config", { config: newConfig }).catch(console.error);
+      if (isTauri()) {
+        invoke("update_active_config", { config: newConfig }).catch(console.error);
+      }
 
       // 若已有完成項目，標記參數已變更 (浮現 R 鍵)
       const hasCompleted = Object.values(state.tasks).some(
@@ -199,10 +203,12 @@ export const useStore = create<TinyPressState>((set, get) => ({
   },
 
   clearList: async () => {
-    try {
-      await invoke("clear_thumbnails");
-    } catch (e) {
-      console.error(e);
+    if (isTauri()) {
+      try {
+        await invoke("clear_thumbnails");
+      } catch (e) {
+        console.error(e);
+      }
     }
     set({
       taskIds: [],
@@ -268,13 +274,31 @@ export const useStore = create<TinyPressState>((set, get) => ({
       };
     });
 
-    try {
-      await invoke("start_batch_compression", {
-        tasks: tasksToRun,
-        config: state.config,
-      });
-    } catch (e) {
-      console.error("Reprocess all failed:", e);
+    if (isTauri()) {
+      try {
+        await invoke("start_batch_compression", {
+          tasks: tasksToRun,
+          config: state.config,
+        });
+      } catch (e) {
+        console.error("Reprocess all failed:", e);
+      }
+    } else {
+      setTimeout(() => {
+        state.taskIds.forEach((id) => {
+          const t = state.tasks[id];
+          if (!t) return;
+          useStore.getState().setTaskCompleted({
+            id: t.id,
+            original_size: t.fileSize,
+            compressed_size: Math.round(t.fileSize * 0.28),
+            savings_ratio: 0.72,
+            output_path: t.filePath,
+            output_format: state.config.target_format.toUpperCase(),
+            is_kept_original: false,
+          });
+        });
+      }, 500);
     }
   },
 }));

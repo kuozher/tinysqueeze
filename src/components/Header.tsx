@@ -31,11 +31,21 @@ export const Header: React.FC = () => {
 
   const progressPercent = total > 0 ? (completed / total) * 100 : 0;
 
-  const appWindow = getCurrentWindow();
-
-  const handleMinimize = () => appWindow.minimize();
-  const handleToggleMaximize = () => appWindow.toggleMaximize();
-  const handleClose = () => appWindow.close();
+  const handleMinimize = () => {
+    if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
+      getCurrentWindow().minimize();
+    }
+  };
+  const handleToggleMaximize = () => {
+    if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
+      getCurrentWindow().toggleMaximize();
+    }
+  };
+  const handleClose = () => {
+    if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
+      getCurrentWindow().close();
+    }
+  };
 
   return (
     <header

@@ -20,3 +20,7 @@ export function truncateFilename(filename: string, maxLen: number = 32): string 
   const back = Math.floor(charsToShow / 2);
   return `${name.slice(0, front)}...${name.slice(name.length - back)}${ext}`;
 }
+
+export function isTauri(): boolean {
+  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+}

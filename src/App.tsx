@@ -62,6 +62,9 @@ export const App: React.FC = () => {
 
   // 監聽 Tauri 原生視窗拖放事件
   useEffect(() => {
+    if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) {
+      return;
+    }
     let unlisten: (() => void) | undefined;
 
     const setupDragDrop = async () => {
@@ -85,18 +88,76 @@ export const App: React.FC = () => {
     };
   }, [handleIngestPaths, setDraggingOver]);
 
-  // 點擊手動選取檔案後的處理
+  // 點擊或拖放選取檔案後的處理
   const handleFilesSelected = (files: FileList | File[]) => {
-    const paths: string[] = [];
-    for (let i = 0; i < files.length; i++) {
-      const f = files[i] as any;
-      if (f.path) {
-        paths.push(f.path);
+    const isTauriEnv =
+      typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
+    if (isTauriEnv) {
+      const paths: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i] as any;
+        if (f.path) {
+          paths.push(f.path);
+        }
+      }
+      if (paths.length > 0) {
+        handleIngestPaths(paths);
+        return;
       }
     }
-    if (paths.length > 0) {
-      handleIngestPaths(paths);
+
+    // 瀏覽器預覽模擬模式 (Browser Preview Mode)
+    const newItems: TaskItem[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      const id = "mock-" + Math.random().toString(36).substring(2, 9);
+      newItems.push({
+        id,
+        filePath: f.name,
+        fileName: f.name,
+        fileSize: f.size || 3420000,
+        status: "processing",
+        width: 1920,
+        height: 1080,
+      });
     }
+
+    addTasks(newItems);
+
+    // 依序模擬 180ms 數值滾動與完成事件
+    newItems.forEach((item, idx) => {
+      setTimeout(() => {
+        const compSize = Math.round(item.fileSize * 0.32);
+        useStore.getState().setTaskCompleted({
+          id: item.id,
+          original_size: item.fileSize,
+          compressed_size: compSize,
+          savings_ratio: 0.68,
+          output_path: item.filePath,
+          output_format: "WEBP",
+          is_kept_original: false,
+        });
+
+        if (idx === newItems.length - 1) {
+          setTimeout(() => {
+            useStore.getState().setSummaryModal({
+              total_processed: newItems.length,
+              total_original_bytes: newItems.reduce(
+                (acc, t) => acc + t.fileSize,
+                0
+              ),
+              total_compressed_bytes: newItems.reduce(
+                (acc, t) => acc + Math.round(t.fileSize * 0.32),
+                0
+              ),
+              total_saved_ratio: 0.68,
+              output_directory: "C:/Users/Pictures/Compressed",
+            });
+          }, 300);
+        }
+      }, (idx + 1) * 350);
+    });
   };
 
   return (
