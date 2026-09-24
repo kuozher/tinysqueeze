@@ -1,6 +1,7 @@
 import React, { useEffect, useCallback } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
+import { CloudArrowUp } from "@phosphor-icons/react";
 
 import { useStore } from "./store";
 import { useTauriEvents } from "./hooks/useTauriEvents";
@@ -15,12 +16,28 @@ import { TaskItem } from "./types";
 
 export const App: React.FC = () => {
   const taskIds = useStore((s) => s.taskIds);
-  const config = useStore((s) => s.config);
   const addTasks = useStore((s) => s.addTasks);
+  const isDraggingOver = useStore((s) => s.isDraggingOver);
   const setDraggingOver = useStore((s) => s.setDraggingOver);
 
   useTauriEvents();
   useKeyboardStack();
+
+  // 防止瀏覽器預設將拖入的檔案直接開啟/導航，確保 WebView2 拖放事件持續有效
+  useEffect(() => {
+    const handleWindowDragOver = (e: DragEvent) => {
+      e.preventDefault();
+    };
+    const handleWindowDrop = (e: DragEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("dragover", handleWindowDragOver);
+    window.addEventListener("drop", handleWindowDrop);
+    return () => {
+      window.removeEventListener("dragover", handleWindowDragOver);
+      window.removeEventListener("drop", handleWindowDrop);
+    };
+  }, []);
 
   const handleIngestPaths = useCallback(
     async (paths: string[]) => {
@@ -38,17 +55,20 @@ export const App: React.FC = () => {
 
         if (scanned.length === 0) return;
 
-        // 避免重複加入已在清單中的任務
+        // 僅跳過當前正在背景處理中（processing）的相同檔案，避免並發衝突；允許重複加入已完成檔案重新轉檔
         const currentTasks = useStore.getState().tasks;
-        const currentPaths = new Set(
-          Object.values(currentTasks).map((t) => t.filePath)
+        const activeProcessingPaths = new Set(
+          Object.values(currentTasks)
+            .filter((t) => t.status === "processing")
+            .map((t) => t.filePath)
         );
-        const uniqueScanned = scanned.filter(
-          (t) => !currentPaths.has(t.file_path)
-        );
-        if (uniqueScanned.length === 0) return;
 
-        const newItems: TaskItem[] = uniqueScanned.map((t) => ({
+        const actionableScanned = scanned.filter(
+          (t) => !activeProcessingPaths.has(t.file_path)
+        );
+        if (actionableScanned.length === 0) return;
+
+        const newItems: TaskItem[] = actionableScanned.map((t) => ({
           id: t.id,
           filePath: t.file_path,
           fileName: t.file_name,
@@ -60,14 +80,14 @@ export const App: React.FC = () => {
 
         // 立即啟動批次壓縮 (Auto-run with dynamic pull)
         await invoke("start_batch_compression", {
-          tasks: uniqueScanned,
-          config,
+          tasks: actionableScanned,
+          config: useStore.getState().config,
         });
       } catch (err) {
         console.error("Path ingestion failed:", err);
       }
     },
-    [addTasks, config]
+    [addTasks]
   );
 
   // 監聽 Tauri 原生視窗拖放事件
@@ -181,6 +201,21 @@ export const App: React.FC = () => {
           <EmptyState onFilesSelected={handleFilesSelected} />
         ) : (
           <TaskList />
+        )}
+
+        {/* 全域懸浮拖曳進場提示層 */}
+        {isDraggingOver && (
+          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[var(--bg-app)]/85 backdrop-blur-[2px] border-2 border-dashed border-[var(--accent-green)] pointer-events-none transition-all duration-150">
+            <div className="flex flex-col items-center gap-2.5 p-6 rounded-[8px] bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-2xl">
+              <CloudArrowUp size={38} weight="bold" className="text-[var(--accent-green)] animate-pulse" />
+              <span className="text-[15px] font-semibold text-[var(--text-main)]">
+                釋放滑鼠以加入圖片佇列
+              </span>
+              <span className="text-[13px] text-[var(--text-muted)]">
+                支援 JPG、PNG、WebP、AVIF，將自動啟動壓縮
+              </span>
+            </div>
+          </div>
         )}
       </main>
 

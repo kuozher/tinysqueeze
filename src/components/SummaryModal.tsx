@@ -42,10 +42,10 @@ export const SummaryModal: React.FC = () => {
             <CheckCircle size={24} weight="bold" />
           </div>
           <div>
-            <h3 className="text-base font-semibold tracking-tight">
+            <h3 className="text-[17px] font-semibold tracking-tight">
               批次處理完成
             </h3>
-            <p className="text-xs text-[var(--text-muted)]">
+            <p className="text-[13px] text-[var(--text-muted)]">
               成功處理 {total_processed} 張圖片，共減少{" "}
               <span className="text-[var(--accent-green)] font-bold">
                 {Math.round(total_saved_ratio * 100)}%
@@ -56,7 +56,7 @@ export const SummaryModal: React.FC = () => {
         </div>
 
         {/* 體積消長矩陣卡 */}
-        <div className="bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[4px] p-3.5 space-y-2 text-xs">
+        <div className="bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[4px] p-3.5 space-y-2 text-[13px]">
           <div className="flex items-center justify-between font-mono tabular-nums">
             <span className="text-[var(--text-muted)]">原始大小:</span>
             <span className="font-medium text-[var(--text-main)]">
@@ -72,7 +72,7 @@ export const SummaryModal: React.FC = () => {
           </div>
 
           <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between font-mono tabular-nums">
-            <span className="text-[var(--accent-green)] font-medium">累計節省:</span>
+            <span className="text-[var(--accent-green)] font-medium">節省空間:</span>
             <span className="font-bold text-[var(--accent-green)]">
               {formatBytes(savedBytes)}
             </span>
@@ -82,16 +82,18 @@ export const SummaryModal: React.FC = () => {
         {/* 按鈕組 */}
         <div className="flex items-center justify-end gap-2.5 pt-1">
           <button
+            type="button"
             onClick={() => setSummaryModal(null)}
-            className="px-3 py-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[4px] hover:bg-[var(--border-hover)]/30 cursor-pointer transition-colors"
+            className="px-3.5 py-1.5 text-[13px] text-[var(--text-muted)] hover:text-[var(--text-main)] bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[4px] hover:bg-[var(--border-hover)]/30 cursor-pointer transition-colors"
           >
             關閉 (Esc)
           </button>
           <button
+            type="button"
             onClick={handleOpenFolder}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-black bg-[var(--accent-green)] rounded-[4px] hover:bg-[var(--accent-green)]/90 cursor-pointer transition-colors shadow-sm"
+            className="flex items-center gap-1.5 px-4 py-1.5 text-[13px] font-semibold text-black bg-[var(--accent-green)] rounded-[4px] hover:bg-[var(--accent-green)]/90 cursor-pointer transition-colors shadow-sm"
           >
-            <FolderOpen size={14} weight="bold" />
+            <FolderOpen size={15} weight="bold" />
             <span>開啟輸出檔案夾 ↵</span>
           </button>
         </div>

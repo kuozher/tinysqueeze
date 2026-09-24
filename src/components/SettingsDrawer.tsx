@@ -20,15 +20,16 @@ export const SettingsDrawer: React.FC = () => {
       />
 
       {/* 360px 抽屜主體 */}
-      <aside className="relative w-[360px] h-full bg-[var(--bg-surface)] border-l border-[var(--border-subtle)] shadow-2xl flex flex-col z-10 text-xs text-[var(--text-main)] animate-in slide-in-from-right duration-200">
+      <aside className="relative w-[360px] h-full bg-[var(--bg-surface)] border-l border-[var(--border-subtle)] shadow-2xl flex flex-col z-10 text-[13px] text-[var(--text-main)] animate-in slide-in-from-right duration-200">
         {/* 頂部標題 */}
         <div className="flex items-center justify-between h-[48px] px-4 border-b border-[var(--border-subtle)] select-none">
-          <span className="font-semibold text-sm">偏好設定</span>
+          <span className="font-semibold text-[15px]">偏好設定</span>
           <button
+            type="button"
             onClick={() => setSettingsOpen(false)}
             className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] rounded hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
           >
-            <X size={16} />
+            <X size={17} />
           </button>
         </div>
 
@@ -36,7 +37,7 @@ export const SettingsDrawer: React.FC = () => {
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {/* 模組 1: 儲存路徑 */}
           <div className="space-y-2.5">
-            <label className="font-semibold text-[var(--text-muted)] uppercase tracking-wider text-[10px]">
+            <label className="font-semibold text-[var(--text-muted)] uppercase tracking-wider text-[11.5px]">
               輸出目的地規則
             </label>
             <div className="space-y-2">
@@ -82,7 +83,7 @@ export const SettingsDrawer: React.FC = () => {
                     onChange={(e) =>
                       updateConfig({ custom_dir_path: e.target.value })
                     }
-                    className="w-full px-2.5 py-1.5 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[4px] text-xs focus:border-[var(--accent-green)] focus:outline-none"
+                    className="w-full px-2.5 py-1.5 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[4px] text-[13px] focus:border-[var(--accent-green)] focus:outline-none"
                   />
                 </div>
               )}
@@ -91,7 +92,7 @@ export const SettingsDrawer: React.FC = () => {
 
           {/* 模組 2: 衝突策略 */}
           <div className="space-y-2.5">
-            <label className="font-semibold text-[var(--text-muted)] uppercase tracking-wider text-[10px]">
+            <label className="font-semibold text-[var(--text-muted)] uppercase tracking-wider text-[11.5px]">
               同名檔案存在時策略
             </label>
             <select
@@ -101,7 +102,7 @@ export const SettingsDrawer: React.FC = () => {
                   conflict_strategy: e.target.value as ConflictStrategy,
                 })
               }
-              className="w-full px-2.5 py-1.5 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[4px] text-xs focus:border-[var(--accent-green)] focus:outline-none cursor-pointer"
+              className="w-full px-2.5 py-1.5 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[4px] text-[13px] focus:border-[var(--accent-green)] focus:outline-none cursor-pointer"
             >
               <option value="auto_rename">自動添加後綴 (如 photo_1.jpg)</option>
               <option value="overwrite">直接覆蓋 (不可逆)</option>

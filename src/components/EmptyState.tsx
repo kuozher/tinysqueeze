@@ -1,7 +1,7 @@
 import React, { useRef } from "react";
 import { CloudArrowUp, Image as ImageIcon } from "@phosphor-icons/react";
 import { useStore } from "../store";
-import { formatBytes, isTauri } from "../utils";
+import { isTauri } from "../utils";
 
 interface EmptyStateProps {
   onFilesSelected: (files: FileList | File[]) => void;
@@ -9,7 +9,6 @@ interface EmptyStateProps {
 
 export const EmptyState: React.FC<EmptyStateProps> = ({ onFilesSelected }) => {
   const isDraggingOver = useStore((s) => s.isDraggingOver);
-  const cumulativeSavedBytes = useStore((s) => s.cumulativeSavedBytes);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleClick = () => {
@@ -69,19 +68,14 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ onFilesSelected }) => {
           </div>
 
           <div className="space-y-1">
-            <h3 className="text-sm font-semibold text-[var(--text-main)] tracking-tight">
+            <h3 className="text-[16px] font-semibold text-[var(--text-main)] tracking-tight">
               拖放圖片至此，或點擊選取檔案
             </h3>
-            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+            <p className="text-[13.5px] text-[var(--text-muted)] leading-relaxed">
               支援 JPG、PNG、WebP、AVIF ｜ 支援單檔、多選與整個資料夾
             </p>
           </div>
         </div>
-      </div>
-
-      {/* 滿足感錨點（心理反饋） */}
-      <div className="absolute bottom-9 right-9 text-[11px] text-[var(--text-dim)] font-mono pointer-events-none">
-        本機累計節省空間：{formatBytes(cumulativeSavedBytes)}
       </div>
     </div>
   );

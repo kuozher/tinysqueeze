@@ -58,13 +58,20 @@ export const useStore = create<TinyPressState>((set, get) => ({
   addTasks: (newTasks) => {
     set((state) => {
       const nextTasks = { ...state.tasks };
-      const nextIds = [...state.taskIds];
+      let nextIds = [...state.taskIds];
 
       for (const t of newTasks) {
-        if (!nextTasks[t.id]) {
-          nextTasks[t.id] = t;
-          nextIds.push(t.id);
+        // 若清單中已有相同路徑的舊任務，先移除舊 ID
+        const existingEntry = Object.values(nextTasks).find(
+          (old) => old.filePath === t.filePath
+        );
+        if (existingEntry) {
+          delete nextTasks[existingEntry.id];
+          nextIds = nextIds.filter((id) => id !== existingEntry.id);
         }
+
+        nextTasks[t.id] = t;
+        nextIds.push(t.id);
       }
 
       return {

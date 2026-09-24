@@ -45,14 +45,14 @@ export const AnimatedSize: React.FC<AnimatedSizeProps> = ({
 
   if (!isCompleted || targetSize === undefined) {
     return (
-      <span className="font-mono tabular-nums text-xs text-[var(--text-muted)]">
+      <span className="font-mono tabular-nums text-[13px] text-[var(--text-muted)]">
         {formatBytes(originalSize)}
       </span>
     );
   }
 
   return (
-    <span className="font-mono tabular-nums text-xs text-[var(--text-muted)]">
+    <span className="font-mono tabular-nums text-[13px] text-[var(--text-muted)]">
       <span>{formatBytes(originalSize)}</span>
       <span className="mx-1.5 text-[var(--text-dim)]">→</span>
       <span className="font-semibold text-[var(--text-main)]">

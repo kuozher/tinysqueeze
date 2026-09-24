@@ -18,17 +18,30 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .manage(pipeline_state)
         .register_uri_scheme_protocol("tinypress-thumb", move |_ctx, request| {
-            let path = request.uri().path();
-            let id = path.trim_start_matches('/');
+            let uri = request.uri();
+            let raw_path = uri.path().trim_start_matches('/');
+            let raw_host = uri.host().unwrap_or("");
+
+            // 支援 tinypress-thumb://localhost/{id} 與 tinypress-thumb://{id}
+            let id = if !raw_path.is_empty() && raw_path != "localhost" {
+                raw_path
+            } else if !raw_host.is_empty() && raw_host != "localhost" {
+                raw_host
+            } else {
+                raw_path
+            };
+
             if let Some(bytes) = thumb_cache.get(id) {
                 tauri::http::Response::builder()
                     .header("Content-Type", "image/webp")
                     .header("Access-Control-Allow-Origin", "*")
+                    .header("Cache-Control", "no-cache")
                     .body(bytes.clone())
                     .unwrap()
             } else {
                 tauri::http::Response::builder()
                     .status(tauri::http::StatusCode::NOT_FOUND)
+                    .header("Access-Control-Allow-Origin", "*")
                     .body(Vec::new())
                     .unwrap()
             }

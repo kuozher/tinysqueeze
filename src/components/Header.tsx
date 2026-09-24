@@ -31,30 +31,53 @@ export const Header: React.FC = () => {
 
   const progressPercent = total > 0 ? (completed / total) * 100 : 0;
 
-  const handleMinimize = () => {
-    if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
-      getCurrentWindow().minimize();
+  const handleDragMouseDown = async (e: React.MouseEvent) => {
+    if (e.button === 0 && !(e.target as HTMLElement).closest("button, input, select, a")) {
+      try {
+        await getCurrentWindow().startDragging();
+      } catch (err) {
+        console.error("Failed to start dragging:", err);
+      }
     }
   };
-  const handleToggleMaximize = () => {
-    if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
-      getCurrentWindow().toggleMaximize();
+
+  const handleMinimize = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await getCurrentWindow().minimize();
+    } catch (err) {
+      console.error("Failed to minimize window:", err);
     }
   };
-  const handleClose = () => {
-    if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
-      getCurrentWindow().close();
+
+  const handleToggleMaximize = async (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    try {
+      await getCurrentWindow().toggleMaximize();
+    } catch (err) {
+      console.error("Failed to toggle maximize window:", err);
+    }
+  };
+
+  const handleClose = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await getCurrentWindow().close();
+    } catch (err) {
+      console.error("Failed to close window:", err);
     }
   };
 
   return (
     <header
       data-tauri-drag-region
+      onMouseDown={handleDragMouseDown}
+      onDoubleClick={() => handleToggleMaximize()}
       className="relative flex items-center justify-between h-[48px] px-3 select-none bg-[var(--bg-app)] border-b border-[var(--border-subtle)] text-[var(--text-main)] z-20"
     >
       {/* 2px Micro Progress Bar at the top edge */}
       {isProcessing && (
-        <div className="absolute top-0 left-0 right-0 h-[2px] bg-transparent overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-transparent overflow-hidden pointer-events-none">
           <div
             className="h-full bg-[var(--accent-green)] transition-all duration-150 ease-out"
             style={{ width: `${progressPercent}%` }}
@@ -70,13 +93,13 @@ export const Header: React.FC = () => {
         <div className="flex items-center justify-center w-6 h-6 rounded bg-[var(--bg-subtle)] text-[var(--accent-green)] border border-[var(--border-subtle)]">
           <FileImage size={15} weight="bold" />
         </div>
-        <span className="text-sm font-semibold tracking-tight">TinyPress</span>
+        <span className="text-[15px] font-semibold tracking-tight">TinyPress</span>
       </div>
 
       {/* Center: Dynamic Batch Status */}
       <div
         data-tauri-drag-region
-        className="flex items-center justify-center flex-1 text-xs text-[var(--text-muted)] cursor-default"
+        className="flex items-center justify-center flex-1 text-[13px] text-[var(--text-muted)] cursor-default"
       >
         {isProcessing ? (
           <span className="flex items-center gap-1.5 font-medium animate-pulse text-[var(--text-main)]">
@@ -95,33 +118,36 @@ export const Header: React.FC = () => {
         {/* Re-process All (R) Button */}
         {configChangedSinceCompleted && !isProcessing && (
           <button
+            type="button"
             onClick={() => reprocessAll()}
             title="快捷列參數已變更，按 R 鍵重新處理全部"
-            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-[var(--accent-amber)] bg-[var(--bg-surface)] border border-[var(--accent-amber)]/40 rounded-[4px] hover:bg-[var(--accent-amber)]/10 cursor-pointer transition-colors duration-150"
+            className="flex items-center gap-1 px-2.5 py-1 text-[13px] font-medium text-[var(--accent-amber)] bg-[var(--bg-surface)] border border-[var(--accent-amber)]/40 rounded-[4px] hover:bg-[var(--accent-amber)]/10 cursor-pointer transition-colors duration-150"
           >
-            <ArrowClockwise size={13} weight="bold" />
+            <ArrowClockwise size={14} weight="bold" />
             <span>重新處理 (R)</span>
           </button>
         )}
 
         {/* Clear List Button */}
         <button
+          type="button"
           onClick={() => clearList()}
           disabled={total === 0 || isProcessing}
           title="清空目前清單"
-          className="flex items-center gap-1 px-2 py-1 text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] disabled:opacity-30 disabled:pointer-events-none rounded-[4px] hover:bg-[var(--bg-surface)] cursor-pointer transition-colors duration-150"
+          className="flex items-center gap-1 px-2.5 py-1 text-[13px] text-[var(--text-muted)] hover:text-[var(--text-main)] disabled:opacity-30 disabled:pointer-events-none rounded-[4px] hover:bg-[var(--bg-surface)] cursor-pointer transition-colors duration-150"
         >
-          <Trash size={13} />
+          <Trash size={14} />
           <span>清空</span>
         </button>
 
         {/* Settings Gear Button */}
         <button
+          type="button"
           onClick={() => setSettingsOpen(true)}
           title="偏好設定"
           className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface)] rounded-[4px] cursor-pointer transition-colors duration-150"
         >
-          <GearSix size={16} />
+          <GearSix size={17} />
         </button>
 
         {/* 1px Vertical Divider */}
@@ -130,25 +156,28 @@ export const Header: React.FC = () => {
         {/* Windows OS Controls ([-] [□] [×]) */}
         <div className="flex items-center">
           <button
+            type="button"
             onClick={handleMinimize}
             title="最小化"
-            className="flex items-center justify-center w-8 h-8 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface)] rounded-[2px] transition-colors"
+            className="flex items-center justify-center w-8 h-8 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface)] rounded-[2px] cursor-pointer transition-colors"
           >
-            <Minus size={13} />
+            <Minus size={14} />
           </button>
           <button
+            type="button"
             onClick={handleToggleMaximize}
             title="最大化 / 還原"
-            className="flex items-center justify-center w-8 h-8 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface)] rounded-[2px] transition-colors"
+            className="flex items-center justify-center w-8 h-8 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface)] rounded-[2px] cursor-pointer transition-colors"
           >
-            <Square size={11} />
+            <Square size={12} />
           </button>
           <button
+            type="button"
             onClick={handleClose}
             title="關閉"
-            className="flex items-center justify-center w-8 h-8 text-[var(--text-muted)] hover:text-white hover:bg-[var(--accent-red)] rounded-[2px] transition-colors"
+            className="flex items-center justify-center w-8 h-8 text-[var(--text-muted)] hover:text-white hover:bg-[var(--accent-red)] rounded-[2px] cursor-pointer transition-colors"
           >
-            <X size={13} />
+            <X size={14} />
           </button>
         </div>
       </div>

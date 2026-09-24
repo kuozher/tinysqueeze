@@ -16,6 +16,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({ task, index }) => {
   const resolveConflict = useStore((s) => s.resolveConflict);
 
   const [isFlashing, setIsFlashing] = useState(false);
+  const [thumbError, setThumbError] = useState(false);
 
   // Stagger vs Flash 衝突防線：若完成事件在進場期到達，延遲到 120ms 後才閃光
   useEffect(() => {
@@ -60,15 +61,16 @@ export const TaskRow: React.FC<TaskRowProps> = ({ task, index }) => {
       <div className="flex items-center gap-3 min-w-0 flex-1">
         {/* 40x40 縮圖 */}
         <div className="relative flex-shrink-0 w-10 h-10 rounded-[4px] overflow-hidden bg-[var(--bg-subtle)] border border-[var(--border-subtle)] flex items-center justify-center">
-          {task.hasThumbnail ? (
+          {task.hasThumbnail && !thumbError ? (
             <img
-              src={`tinypress-thumb://${task.id}`}
+              src={`tinypress-thumb://localhost/${task.id}`}
               alt={task.fileName}
               className="w-full h-full object-cover"
               loading="lazy"
+              onError={() => setThumbError(true)}
             />
           ) : (
-            <span className="text-[10px] font-mono font-bold tracking-wider text-[var(--text-muted)]">
+            <span className="text-[11px] font-mono font-bold tracking-wider text-[var(--text-muted)]">
               {ext}
             </span>
           )}
@@ -78,16 +80,21 @@ export const TaskRow: React.FC<TaskRowProps> = ({ task, index }) => {
         <div className="flex flex-col min-w-0 pr-4">
           <span
             title={task.fileName}
-            className="text-xs font-semibold text-[var(--text-main)] selectable-filename truncate max-w-[260px]"
+            className="text-[13.5px] font-semibold text-[var(--text-main)] selectable-filename truncate max-w-[280px]"
           >
             {truncateFilename(task.fileName, 34)}
           </span>
-          <span className="text-[11px] text-[var(--text-muted)] font-mono">
-            {task.width && task.height
-              ? `${task.width} × ${task.height}`
-              : task.outputFormat
-              ? `格式: ${task.outputFormat}`
-              : ext}
+          <span className="text-[12px] text-[var(--text-muted)] font-mono flex items-center gap-1.5">
+            {task.width && task.height && (
+              <span>{task.width} × {task.height}</span>
+            )}
+            {task.outputFormat && task.outputFormat !== ext ? (
+              <span className="px-1 py-0.2 rounded bg-[var(--bg-subtle)] border border-[var(--border-subtle)] text-[var(--accent-green)] text-[10.5px] font-semibold">
+                {ext} → {task.outputFormat}
+              </span>
+            ) : (
+              <span className="text-[var(--text-dim)]">{ext}</span>
+            )}
           </span>
         </div>
       </div>
@@ -96,83 +103,95 @@ export const TaskRow: React.FC<TaskRowProps> = ({ task, index }) => {
       <div className="flex items-center gap-4 flex-shrink-0">
         {task.status === "conflict" ? (
           <div className="flex items-center gap-2 bg-[var(--accent-amber)]/10 border border-[var(--accent-amber)]/30 px-2 py-1 rounded-[4px]">
-            <WarningCircle size={14} className="text-[var(--accent-amber)]" />
-            <span className="text-[11px] text-[var(--accent-amber)] font-medium">
+            <WarningCircle size={15} className="text-[var(--accent-amber)]" />
+            <span className="text-[12px] text-[var(--accent-amber)] font-medium">
               檔案已存在:
             </span>
             <div className="flex items-center gap-1">
               <button
+                type="button"
                 onClick={() => resolveConflict(task.id, "overwrite")}
-                className="px-1.5 py-0.5 text-[11px] font-medium bg-[var(--accent-amber)] text-black rounded hover:opacity-90 transition-opacity"
+                className="px-1.5 py-0.5 text-[12px] font-medium bg-[var(--accent-amber)] text-black rounded hover:opacity-90 transition-opacity cursor-pointer"
               >
                 覆蓋
               </button>
               <button
+                type="button"
                 onClick={() => resolveConflict(task.id, "auto_rename")}
-                className="px-1.5 py-0.5 text-[11px] font-medium bg-[var(--bg-surface)] text-[var(--text-main)] border border-[var(--border-subtle)] rounded hover:bg-[var(--border-subtle)] transition-colors"
+                className="px-1.5 py-0.5 text-[12px] font-medium bg-[var(--bg-surface)] text-[var(--text-main)] border border-[var(--border-subtle)] rounded hover:bg-[var(--border-subtle)] transition-colors cursor-pointer"
               >
                 更名
               </button>
               <button
+                type="button"
                 onClick={() => resolveConflict(task.id, "skip")}
-                className="px-1.5 py-0.5 text-[11px] font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+                className="px-1.5 py-0.5 text-[12px] font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
               >
                 跳過
               </button>
             </div>
           </div>
         ) : task.status === "error" ? (
-          <span className="text-xs text-[var(--accent-red)] font-medium">
+          <span className="text-[13px] text-[var(--accent-red)] font-medium">
             {task.errorMessage || "處理失敗"}
           </span>
         ) : (
-          <div className="flex items-center gap-3">
-            <AnimatedSize
-              originalSize={task.fileSize}
-              targetSize={task.compressedSize}
-              isCompleted={task.status === "completed"}
-            />
+          <>
+            <div className="w-[140px] text-right flex items-center justify-end">
+              <AnimatedSize
+                originalSize={task.fileSize}
+                targetSize={task.compressedSize}
+                isCompleted={task.status === "completed"}
+              />
+            </div>
 
-            {/* 壓縮率標記 */}
-            {task.status === "completed" && (
-              <div className="min-w-[60px] text-right">
-                {task.isKeptOriginal ? (
-                  <span className="text-[11px] text-[var(--text-muted)] font-mono">
+            {/* 壓縮率標記或進度條 */}
+            <div className="w-[70px] text-right flex items-center justify-end">
+              {task.status === "completed" && (
+                task.isKeptOriginal ? (
+                  <span className="text-[12px] text-[var(--text-muted)] font-mono">
                     維持原檔
                   </span>
                 ) : (
-                  <span className="text-xs font-mono font-bold text-[var(--accent-green)]">
+                  <span className="text-[13px] font-mono font-bold text-[var(--accent-green)]">
                     -{Math.round((task.savingsRatio || 0) * 100)}%
                   </span>
-                )}
-              </div>
-            )}
+                )
+              )}
 
-            {task.status === "processing" && (
-              <span className="text-xs text-[var(--accent-green)] animate-pulse font-medium">
-                壓縮中...
-              </span>
-            )}
-          </div>
+              {task.status === "processing" && (
+                <div className="flex items-center justify-end gap-1.5 w-full">
+                  <div className="w-10 h-1.5 bg-[var(--bg-subtle)] rounded-[2px] overflow-hidden border border-[var(--border-subtle)] relative">
+                    <div className="h-full bg-[var(--accent-green)] rounded-[1px] animate-indeterminate" />
+                  </div>
+                  <span className="text-[11.5px] font-medium text-[var(--accent-green)] tracking-tight">
+                    壓縮中
+                  </span>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
 
       {/* 右側：動作按鈕（懸停浮現） */}
-      <div className="flex items-center gap-1 w-16 justify-end flex-shrink-0">
+      <div className="flex items-center gap-1 w-14 justify-end flex-shrink-0 pr-1">
         <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1">
           <button
+            type="button"
             onClick={handleOpenFolder}
             title="開啟所在檔案夾"
-            className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface)] rounded-[3px] transition-colors"
+            className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface)] rounded-[3px] transition-colors cursor-pointer"
           >
-            <Folder size={14} />
+            <Folder size={15} />
           </button>
           <button
+            type="button"
             onClick={() => removeTask(task.id)}
             title="從清單移除"
-            className="p-1 text-[var(--text-muted)] hover:text-[var(--accent-red)] hover:bg-[var(--bg-surface)] rounded-[3px] transition-colors"
+            className="p-1.5 text-[var(--text-muted)] hover:text-[var(--accent-red)] hover:bg-[var(--bg-surface)] rounded-[3px] transition-colors cursor-pointer"
           >
-            <X size={14} />
+            <X size={15} />
           </button>
         </div>
       </div>
