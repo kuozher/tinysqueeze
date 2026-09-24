@@ -1,0 +1,46 @@
+[package]
+name = "tinypress"
+version = "0.1.0"
+description = "A lightweight image compression and format conversion desktop tool"
+authors = ["tinypress"]
+edition = "2021"
+
+[lib]
+name = "tinypress_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1", features = ["full"] }
+rayon = "1.10"
+dashmap = "5.5"
+uuid = { version = "1.8", features = ["v4"] }
+walkdir = "2.5"
+num_cpus = "1.16"
+dirs = "6.0"
+
+# 影像解碼基礎
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+
+# 編碼引擎
+imagequant = "4.3"
+oxipng = { version = "9.0", default-features = false, features = ["parallel"] }
+ravif = "0.11"
+mozjpeg = "0.10"
+webp = "0.3"
+png = "0.17"
+imgref = "1.10"
+rgb = "0.8"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true

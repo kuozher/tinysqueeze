@@ -1,0 +1,70 @@
+import React, { useRef } from "react";
+import { CloudArrowUp, Image as ImageIcon } from "@phosphor-icons/react";
+import { useStore } from "../store";
+import { formatBytes } from "../utils";
+
+interface EmptyStateProps {
+  onFilesSelected: (files: FileList | File[]) => void;
+}
+
+export const EmptyState: React.FC<EmptyStateProps> = ({ onFilesSelected }) => {
+  const isDraggingOver = useStore((s) => s.isDraggingOver);
+  const cumulativeSavedBytes = useStore((s) => s.cumulativeSavedBytes);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      onFilesSelected(e.target.files);
+    }
+  };
+
+  return (
+    <div className="relative flex-1 flex flex-col items-center justify-center p-6 h-full select-none">
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept=".png,.jpg,.jpeg,.webp,.avif"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
+      <div
+        onClick={handleClick}
+        className={`w-full h-full flex flex-col items-center justify-center rounded-[6px] border-2 border-dashed transition-all duration-100 cursor-pointer ${
+          isDraggingOver
+            ? "border-[var(--accent-green)] bg-[var(--accent-green)]/5 scale-[0.99]"
+            : "border-[var(--border-subtle)] hover:border-[var(--border-hover)] hover:bg-[var(--bg-subtle)]/50"
+        }`}
+      >
+        <div className="flex flex-col items-center gap-3 text-center max-w-md">
+          <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-subtle)] text-[var(--accent-green)] shadow-sm">
+            {isDraggingOver ? (
+              <CloudArrowUp size={28} weight="bold" />
+            ) : (
+              <ImageIcon size={26} weight="regular" />
+            )}
+          </div>
+
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold text-[var(--text-main)] tracking-tight">
+              拖放圖片至此，或點擊選取檔案
+            </h3>
+            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+              支援 JPG、PNG、WebP、AVIF ｜ 支援單檔、多選與整個資料夾
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 滿足感錨點（心理反饋） */}
+      <div className="absolute bottom-9 right-9 text-[11px] text-[var(--text-dim)] font-mono pointer-events-none">
+        本機累計節省空間：{formatBytes(cumulativeSavedBytes)}
+      </div>
+    </div>
+  );
+};

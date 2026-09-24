@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+:root {
+  /* --- 字型體系 --- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+
+  /* --- 尺寸與間距級距 --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* --- 圓角規格 (嚴格微圓角，禁用膠囊型) --- */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+
+  /* --- 微互動動態曲線與時序 --- */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --duration-instant: 100ms;  /* 點擊回饋、懸停明度變化 */
+  --duration-fast: 150ms;     /* 單列完成閃光、標籤進場 */
+  --duration-normal: 180ms;   /* 數字滾動過渡、抽屜面板展開 */
+  --duration-layout: 240ms;   /* 待機區與清單容器結構轉換 */
+
+  --stagger-step: 15ms;       /* 清單批次進場階梯差，上限 8 列 */
+
+  /* --- 深色模式 (預設：工具感、低彩度、保護看圖環境) --- */
+  --bg-app: #121314;
+  --bg-surface: #1a1b1e;
+  --bg-subtle: #222327;
+  --border-subtle: #2b2d31;
+  --border-hover: #3f4248;
+  --text-main: #f0f0f2;
+  --text-muted: #8b8e96;
+  --text-dim: #5c5f66;
+
+  --accent-green: #34d399;
+  --accent-amber: #fbbf24;
+  --accent-red: #f87171;
+
+  --flash-success: rgba(52, 211, 153, 0.08);
+  --flash-error: rgba(248, 113, 113, 0.08);
+}
+
+/* --- 淺色模式支援 (系統偏好或手動切換) --- */
+[data-theme="light"],
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg-app: #f4f4f6;
+    --bg-surface: #ffffff;
+    --bg-subtle: #eaebee;
+    --border-subtle: #dcdfe4;
+    --border-hover: #b8bcc4;
+    --text-main: #18191b;
+    --text-muted: #656973;
+    --text-dim: #9aa0a6;
+
+    --accent-green: #059669;
+    --accent-amber: #d97706;
+    --accent-red: #dc2626;
+
+    --flash-success: rgba(5, 150, 105, 0.08);
+    --flash-error: rgba(220, 38, 38, 0.08);
+  }
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  overflow: hidden;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- 排版與文字控制輔助類別 --- */
+.numeric-data {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.selectable-filename {
+  user-select: text;
+  cursor: text;
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hover);
+}
