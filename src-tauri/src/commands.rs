@@ -126,3 +126,32 @@ pub async fn open_output_dir(path: String) -> Result<(), String> {
     }
     Ok(())
 }
+
+/// 視窗控制：最小化
+#[tauri::command]
+pub async fn window_minimize(window: tauri::Window) -> Result<(), String> {
+    window.minimize().map_err(|e| e.to_string())
+}
+
+/// 視窗控制：最大化 / 還原切換
+#[tauri::command]
+pub async fn window_toggle_maximize(window: tauri::Window) -> Result<(), String> {
+    if window.is_maximized().unwrap_or(false) {
+        window.unmaximize().map_err(|e| e.to_string())
+    } else {
+        window.maximize().map_err(|e| e.to_string())
+    }
+}
+
+/// 視窗控制：關閉
+#[tauri::command]
+pub async fn window_close(window: tauri::Window) -> Result<(), String> {
+    window.close().map_err(|e| e.to_string())
+}
+
+/// 視窗控制：原生無邊框拖曳
+#[tauri::command]
+pub async fn window_start_dragging(window: tauri::Window) -> Result<(), String> {
+    window.start_dragging().map_err(|e| e.to_string())
+}
+

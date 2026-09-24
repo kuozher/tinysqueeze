@@ -11,6 +11,30 @@ interface TaskRowProps {
   index: number;
 }
 
+const TaskProgressBar: React.FC = () => {
+  const [progress, setProgress] = useState(25);
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setProgress(65), 70);
+    const t2 = setTimeout(() => setProgress(90), 180);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, []);
+
+  return (
+    <div className="flex items-center justify-end w-full">
+      <div className="w-[64px] h-2 bg-[var(--bg-subtle)] rounded-[3px] overflow-hidden border border-[var(--border-subtle)] relative">
+        <div
+          className="h-full bg-[var(--accent-green)] rounded-[2px] transition-all duration-200 ease-out shadow-[0_0_6px_rgba(52,211,153,0.5)]"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    </div>
+  );
+};
+
 export const TaskRow: React.FC<TaskRowProps> = ({ task, index }) => {
   const removeTask = useStore((s) => s.removeTask);
   const resolveConflict = useStore((s) => s.resolveConflict);
@@ -159,16 +183,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({ task, index }) => {
                 )
               )}
 
-              {task.status === "processing" && (
-                <div className="flex items-center justify-end gap-1.5 w-full">
-                  <div className="w-10 h-1.5 bg-[var(--bg-subtle)] rounded-[2px] overflow-hidden border border-[var(--border-subtle)] relative">
-                    <div className="h-full bg-[var(--accent-green)] rounded-[1px] animate-indeterminate" />
-                  </div>
-                  <span className="text-[11.5px] font-medium text-[var(--accent-green)] tracking-tight">
-                    壓縮中
-                  </span>
-                </div>
-              )}
+              {task.status === "processing" && <TaskProgressBar />}
             </div>
           </>
         )}

@@ -1,5 +1,6 @@
 import React from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
 import {
   GearSix,
   ArrowClockwise,
@@ -34,9 +35,13 @@ export const Header: React.FC = () => {
   const handleDragMouseDown = async (e: React.MouseEvent) => {
     if (e.button === 0 && !(e.target as HTMLElement).closest("button, input, select, a")) {
       try {
-        await getCurrentWindow().startDragging();
-      } catch (err) {
-        console.error("Failed to start dragging:", err);
+        await invoke("window_start_dragging");
+      } catch {
+        try {
+          await getCurrentWindow().startDragging();
+        } catch (err) {
+          console.error("Failed to start dragging:", err);
+        }
       }
     }
   };
@@ -44,27 +49,39 @@ export const Header: React.FC = () => {
   const handleMinimize = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await getCurrentWindow().minimize();
-    } catch (err) {
-      console.error("Failed to minimize window:", err);
+      await invoke("window_minimize");
+    } catch {
+      try {
+        await getCurrentWindow().minimize();
+      } catch (err) {
+        console.error("Failed to minimize window:", err);
+      }
     }
   };
 
   const handleToggleMaximize = async (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     try {
-      await getCurrentWindow().toggleMaximize();
-    } catch (err) {
-      console.error("Failed to toggle maximize window:", err);
+      await invoke("window_toggle_maximize");
+    } catch {
+      try {
+        await getCurrentWindow().toggleMaximize();
+      } catch (err) {
+        console.error("Failed to toggle maximize window:", err);
+      }
     }
   };
 
   const handleClose = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await getCurrentWindow().close();
-    } catch (err) {
-      console.error("Failed to close window:", err);
+      await invoke("window_close");
+    } catch {
+      try {
+        await getCurrentWindow().close();
+      } catch (err) {
+        console.error("Failed to close window:", err);
+      }
     }
   };
 

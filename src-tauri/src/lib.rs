@@ -58,6 +58,10 @@ pub fn run() {
             commands::resolve_file_conflict,
             commands::clear_thumbnails,
             commands::open_output_dir,
+            commands::window_minimize,
+            commands::window_toggle_maximize,
+            commands::window_close,
+            commands::window_start_dragging,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tinypress application");

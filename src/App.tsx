@@ -55,20 +55,18 @@ export const App: React.FC = () => {
 
         if (scanned.length === 0) return;
 
-        // 僅跳過當前正在背景處理中（processing）的相同檔案，避免並發衝突；允許重複加入已完成檔案重新轉檔
+        // 嚴格僅挑選出尚未存在於佇列中的全新檔案，絕不重轉已完成的舊檔案
         const currentTasks = useStore.getState().tasks;
-        const activeProcessingPaths = new Set(
-          Object.values(currentTasks)
-            .filter((t) => t.status === "processing")
-            .map((t) => t.filePath)
+        const existingPaths = new Set(
+          Object.values(currentTasks).map((t) => t.filePath)
         );
 
-        const actionableScanned = scanned.filter(
-          (t) => !activeProcessingPaths.has(t.file_path)
+        const newScanned = scanned.filter(
+          (t) => !existingPaths.has(t.file_path)
         );
-        if (actionableScanned.length === 0) return;
+        if (newScanned.length === 0) return;
 
-        const newItems: TaskItem[] = actionableScanned.map((t) => ({
+        const newItems: TaskItem[] = newScanned.map((t) => ({
           id: t.id,
           filePath: t.file_path,
           fileName: t.file_name,
@@ -78,9 +76,9 @@ export const App: React.FC = () => {
 
         addTasks(newItems);
 
-        // 立即啟動批次壓縮 (Auto-run with dynamic pull)
+        // 僅對全新加入的檔案啟動壓縮處理
         await invoke("start_batch_compression", {
-          tasks: actionableScanned,
+          tasks: newScanned,
           config: useStore.getState().config,
         });
       } catch (err) {

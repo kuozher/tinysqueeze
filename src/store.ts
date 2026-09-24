@@ -17,6 +17,7 @@ interface TinyPressState {
   summaryModalData: BatchFinishedPayload | null;
   isDraggingOver: boolean;
   cumulativeSavedBytes: number;
+  hasShownSummaryModal: boolean;
 
   // Actions
   addTasks: (newTasks: TaskItem[]) => void;
@@ -29,6 +30,7 @@ interface TinyPressState {
   clearList: () => Promise<void>;
   removeTask: (id: string) => void;
   setSummaryModal: (data: BatchFinishedPayload | null) => void;
+  checkAndTriggerSummaryModal: () => void;
   setSettingsOpen: (open: boolean) => void;
   setDraggingOver: (over: boolean) => void;
   reprocessAll: () => Promise<void>;
@@ -53,31 +55,26 @@ export const useStore = create<TinyPressState>((set, get) => ({
   isSettingsOpen: false,
   summaryModalData: null,
   isDraggingOver: false,
+  hasShownSummaryModal: false,
   cumulativeSavedBytes: Number(localStorage.getItem(SAVED_BYTES_KEY) || "1488977920"), // 預設約 1.38 GB
 
   addTasks: (newTasks) => {
     set((state) => {
       const nextTasks = { ...state.tasks };
-      let nextIds = [...state.taskIds];
+      const nextIds = [...state.taskIds];
 
       for (const t of newTasks) {
-        // 若清單中已有相同路徑的舊任務，先移除舊 ID
-        const existingEntry = Object.values(nextTasks).find(
-          (old) => old.filePath === t.filePath
-        );
-        if (existingEntry) {
-          delete nextTasks[existingEntry.id];
-          nextIds = nextIds.filter((id) => id !== existingEntry.id);
+        if (!nextTasks[t.id]) {
+          nextTasks[t.id] = t;
+          nextIds.push(t.id);
         }
-
-        nextTasks[t.id] = t;
-        nextIds.push(t.id);
       }
 
       return {
         tasks: nextTasks,
         taskIds: nextIds,
         configChangedSinceCompleted: false,
+        hasShownSummaryModal: false,
       };
     });
   },
@@ -128,6 +125,11 @@ export const useStore = create<TinyPressState>((set, get) => ({
         },
       };
     });
+
+    // 檢查佇列是否「全數項目皆已完成」，若是則優雅彈窗
+    setTimeout(() => {
+      get().checkAndTriggerSummaryModal();
+    }, 250);
   },
 
   setTaskError: (id, error) => {
@@ -145,6 +147,10 @@ export const useStore = create<TinyPressState>((set, get) => ({
         },
       };
     });
+
+    setTimeout(() => {
+      get().checkAndTriggerSummaryModal();
+    }, 250);
   },
 
   setConflict: (id, candidatePath) => {
@@ -240,6 +246,52 @@ export const useStore = create<TinyPressState>((set, get) => ({
     set({ summaryModalData: data });
   },
 
+  checkAndTriggerSummaryModal: () => {
+    const state = get();
+    if (state.hasShownSummaryModal) return;
+    if (state.taskIds.length === 0) return;
+
+    // 嚴格判定：佇列中只要還有任何一張處於 processing 或 conflict，絕不彈窗
+    const hasUnfinished = state.taskIds.some(
+      (id) => state.tasks[id]?.status === "processing" || state.tasks[id]?.status === "conflict"
+    );
+    if (hasUnfinished) return;
+
+    const completedTasks = state.taskIds
+      .map((id) => state.tasks[id])
+      .filter((t) => t && t.status === "completed");
+
+    if (completedTasks.length === 0) return;
+
+    const totalOrig = completedTasks.reduce((acc, t) => acc + t.fileSize, 0);
+    const totalComp = completedTasks.reduce(
+      (acc, t) => acc + (t.compressedSize ?? t.fileSize),
+      0
+    );
+    const savedRatio = totalOrig > 0 ? (totalOrig - totalComp) / totalOrig : 0;
+    const lastTask = completedTasks[completedTasks.length - 1];
+
+    let outDir = "";
+    if (lastTask?.outputPath) {
+      const slashIdx = Math.max(
+        lastTask.outputPath.lastIndexOf("/"),
+        lastTask.outputPath.lastIndexOf("\\")
+      );
+      outDir = slashIdx !== -1 ? lastTask.outputPath.substring(0, slashIdx) : lastTask.outputPath;
+    }
+
+    set({
+      hasShownSummaryModal: true,
+      summaryModalData: {
+        total_processed: completedTasks.length,
+        total_original_bytes: totalOrig,
+        total_compressed_bytes: totalComp,
+        total_saved_ratio: Math.max(0, savedRatio),
+        output_directory: outDir,
+      },
+    });
+  },
+
   setSettingsOpen: (open) => {
     set({ isSettingsOpen: open });
   },
@@ -278,6 +330,7 @@ export const useStore = create<TinyPressState>((set, get) => ({
       return {
         tasks: nextTasks,
         configChangedSinceCompleted: false,
+        hasShownSummaryModal: false,
       };
     });
 

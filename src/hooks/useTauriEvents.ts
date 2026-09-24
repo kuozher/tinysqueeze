@@ -13,7 +13,7 @@ export function useTauriEvents() {
   const setTaskCompleted = useStore((s) => s.setTaskCompleted);
   const setTaskError = useStore((s) => s.setTaskError);
   const setConflict = useStore((s) => s.setConflict);
-  const setSummaryModal = useStore((s) => s.setSummaryModal);
+  const checkAndTriggerSummaryModal = useStore((s) => s.checkAndTriggerSummaryModal);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) {
@@ -41,8 +41,11 @@ export function useTauriEvents() {
         setConflict(e.payload.id, e.payload.candidate_output_path);
       });
 
-      const u5 = await listen<BatchFinishedPayload>("batch_finished", (e) => {
-        setSummaryModal(e.payload);
+      const u5 = await listen<BatchFinishedPayload>("batch_finished", () => {
+        // 收到後端批次結束通知時，統一檢查全體佇列是否皆已完成
+        setTimeout(() => {
+          checkAndTriggerSummaryModal();
+        }, 200);
       });
 
       unlistenAll = [u1, u2, u3, u4, u5];
@@ -53,5 +56,5 @@ export function useTauriEvents() {
     return () => {
       unlistenAll.forEach((fn) => fn());
     };
-  }, [setThumbnailReady, setTaskCompleted, setTaskError, setConflict, setSummaryModal]);
+  }, [setThumbnailReady, setTaskCompleted, setTaskError, setConflict, checkAndTriggerSummaryModal]);
 }
