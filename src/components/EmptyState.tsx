@@ -1,7 +1,7 @@
 import React, { useRef } from "react";
 import { CloudArrowUp, Image as ImageIcon } from "@phosphor-icons/react";
 import { useStore } from "../store";
-import { formatBytes } from "../utils";
+import { formatBytes, isTauri } from "../utils";
 
 interface EmptyStateProps {
   onFilesSelected: (files: FileList | File[]) => void;
@@ -36,14 +36,17 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ onFilesSelected }) => {
       <div
         onClick={handleClick}
         onDragOver={(e) => {
+          if (isTauri()) return;
           e.preventDefault();
           useStore.getState().setDraggingOver(true);
         }}
         onDragLeave={(e) => {
+          if (isTauri()) return;
           e.preventDefault();
           useStore.getState().setDraggingOver(false);
         }}
         onDrop={(e) => {
+          if (isTauri()) return;
           e.preventDefault();
           useStore.getState().setDraggingOver(false);
           if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {

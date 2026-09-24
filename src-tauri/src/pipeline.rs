@@ -313,7 +313,8 @@ async fn process_single_task(
     }
 
     // 負向膨脹防禦 (Negative Compression Guard)
-    let is_kept_original = if compressed_size >= orig_size && ext == orig_ext {
+    let is_same_fmt = config.target_format == "original" || is_same_image_format(ext, orig_ext);
+    let is_kept_original = if compressed_size >= orig_size && is_same_fmt {
         should_write_encoded = false;
         true
     } else {
@@ -321,7 +322,7 @@ async fn process_single_task(
     };
 
     let final_size = if is_kept_original {
-        // 直接複製原檔至候選路徑
+        // 若目標候選路徑與原檔不同（例如因 auto_rename 產生 foo_1.jpg），直接複製原檔
         if orig_path != candidate_output_path {
             fs::copy(&orig_path, &candidate_output_path)
                 .map_err(|e| format!("原檔複製失敗: {e}"))?;
@@ -387,4 +388,15 @@ fn get_auto_renamed_path(dir: &Path, stem: &str, ext: &str) -> PathBuf {
         }
         counter += 1;
     }
+}
+
+fn is_same_image_format(ext1: &str, ext2: &str) -> bool {
+    let e1 = ext1.to_ascii_lowercase();
+    let e2 = ext2.to_ascii_lowercase();
+    if e1 == e2 {
+        return true;
+    }
+    let is_jpeg1 = e1 == "jpg" || e1 == "jpeg";
+    let is_jpeg2 = e2 == "jpg" || e2 == "jpeg";
+    is_jpeg1 && is_jpeg2
 }

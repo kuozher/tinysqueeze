@@ -38,7 +38,17 @@ export const App: React.FC = () => {
 
         if (scanned.length === 0) return;
 
-        const newItems: TaskItem[] = scanned.map((t) => ({
+        // 避免重複加入已在清單中的任務
+        const currentTasks = useStore.getState().tasks;
+        const currentPaths = new Set(
+          Object.values(currentTasks).map((t) => t.filePath)
+        );
+        const uniqueScanned = scanned.filter(
+          (t) => !currentPaths.has(t.file_path)
+        );
+        if (uniqueScanned.length === 0) return;
+
+        const newItems: TaskItem[] = uniqueScanned.map((t) => ({
           id: t.id,
           filePath: t.file_path,
           fileName: t.file_name,
@@ -50,7 +60,7 @@ export const App: React.FC = () => {
 
         // 立即啟動批次壓縮 (Auto-run with dynamic pull)
         await invoke("start_batch_compression", {
-          tasks: scanned,
+          tasks: uniqueScanned,
           config,
         });
       } catch (err) {
@@ -103,8 +113,8 @@ export const App: React.FC = () => {
       }
       if (paths.length > 0) {
         handleIngestPaths(paths);
-        return;
       }
+      return; // 在 Tauri 環境下嚴禁回退至瀏覽器模擬
     }
 
     // 瀏覽器預覽模擬模式 (Browser Preview Mode)

@@ -68,6 +68,7 @@ impl ImageEncoder for PngEncoder {
             let mut png_encoder = png::Encoder::new(&mut raw_png, width, height);
             png_encoder.set_color(png::ColorType::Indexed);
             png_encoder.set_depth(png::BitDepth::Eight);
+            png_encoder.set_compression(png::Compression::Best);
 
             let mut plte = Vec::with_capacity(palette.len() * 3);
             let mut trns = Vec::with_capacity(palette.len());
@@ -117,6 +118,8 @@ impl ImageEncoder for JpegEncoder {
             comp.set_size(width, height);
             comp.set_quality(quality);
             comp.set_color_space(mozjpeg::ColorSpace::JCS_YCbCr);
+            comp.set_optimize_scans(true);
+            comp.set_progressive_mode();
             let mut comp = comp.start_compress(Vec::new())?;
 
             let raw = rgb.as_raw();
