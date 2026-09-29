@@ -9,6 +9,7 @@ interface EmptyStateProps {
 
 export const EmptyState: React.FC<EmptyStateProps> = ({ onFilesSelected }) => {
   const isDraggingOver = useStore((s) => s.isDraggingOver);
+  const t = useStore((s) => s.t);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleClick = () => {
@@ -69,10 +70,10 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ onFilesSelected }) => {
 
           <div className="space-y-1">
             <h3 className="text-[16px] font-semibold text-[var(--text-main)] tracking-tight">
-              拖放圖片至此，或點擊選取檔案
+              {t("dropPromptTitle")}
             </h3>
             <p className="text-[13.5px] text-[var(--text-muted)] leading-relaxed">
-              支援 JPG、PNG、WebP、AVIF ｜ 支援單檔、多選與整個資料夾
+              {t("dropPromptFormats")}
             </p>
           </div>
         </div>

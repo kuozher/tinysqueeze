@@ -48,8 +48,25 @@
   --flash-error: rgba(248, 113, 113, 0.08);
 }
 
-/* --- 淺色模式支援 (系統偏好或手動切換) --- */
-[data-theme="light"],
+/* --- 淺色模式支援 (手動切換或系統偏好) --- */
+[data-theme="light"] {
+  --bg-app: #f4f4f6;
+  --bg-surface: #ffffff;
+  --bg-subtle: #eaebee;
+  --border-subtle: #dcdfe4;
+  --border-hover: #b8bcc4;
+  --text-main: #18191b;
+  --text-muted: #656973;
+  --text-dim: #9aa0a6;
+
+  --accent-green: #059669;
+  --accent-amber: #d97706;
+  --accent-red: #dc2626;
+
+  --flash-success: rgba(5, 150, 105, 0.08);
+  --flash-error: rgba(220, 38, 38, 0.08);
+}
+
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
     --bg-app: #f4f4f6;

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { X } from "@phosphor-icons/react";
 import { useStore } from "../store";
 import { ConflictStrategy } from "../types";
@@ -8,6 +8,27 @@ export const SettingsDrawer: React.FC = () => {
   const setSettingsOpen = useStore((s) => s.setSettingsOpen);
   const config = useStore((s) => s.config);
   const updateConfig = useStore((s) => s.updateConfig);
+  const locale = useStore((s) => s.locale);
+  const setLocale = useStore((s) => s.setLocale);
+  const t = useStore((s) => s.t);
+
+  const [currentTheme, setCurrentTheme] = useState<"dark" | "light">(() => {
+    return (
+      (localStorage.getItem("tinysqueeze_theme") as "dark" | "light") ||
+      (localStorage.getItem("tinypress_theme") as "dark" | "light") ||
+      "dark"
+    );
+  });
+
+  const handleSetTheme = (theme: "dark" | "light") => {
+    setCurrentTheme(theme);
+    localStorage.setItem("tinysqueeze_theme", theme);
+    if (theme === "light") {
+      document.documentElement.setAttribute("data-theme", "light");
+    } else {
+      document.documentElement.setAttribute("data-theme", "dark");
+    }
+  };
 
   if (!isSettingsOpen) return null;
 
@@ -23,7 +44,7 @@ export const SettingsDrawer: React.FC = () => {
       <aside className="relative w-[360px] h-full bg-[var(--bg-surface)] border-l border-[var(--border-subtle)] shadow-2xl flex flex-col z-10 text-[13px] text-[var(--text-main)] animate-in slide-in-from-right duration-200">
         {/* 頂部標題 */}
         <div className="flex items-center justify-between h-[48px] px-4 border-b border-[var(--border-subtle)] select-none">
-          <span className="font-semibold text-[15px]">偏好設定</span>
+          <span className="font-semibold text-[15px]">{t("prefTitle")}</span>
           <button
             type="button"
             onClick={() => setSettingsOpen(false)}
@@ -38,7 +59,7 @@ export const SettingsDrawer: React.FC = () => {
           {/* 模組 1: 儲存路徑 */}
           <div className="space-y-2.5">
             <label className="font-semibold text-[var(--text-muted)] uppercase tracking-wider text-[11.5px]">
-              輸出目的地規則
+              {t("sectionDestination")}
             </label>
             <div className="space-y-2">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -49,7 +70,7 @@ export const SettingsDrawer: React.FC = () => {
                   onChange={() => updateConfig({ output_dir_mode: "same" })}
                   className="accent-[var(--accent-green)]"
                 />
-                <span>與原檔相同路徑</span>
+                <span>{t("destSame")}</span>
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer">
@@ -60,7 +81,7 @@ export const SettingsDrawer: React.FC = () => {
                   onChange={() => updateConfig({ output_dir_mode: "sub" })}
                   className="accent-[var(--accent-green)]"
                 />
-                <span>原檔目錄下相對子資料夾 (min/)</span>
+                <span>{t("destSub")}</span>
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer">
@@ -71,14 +92,14 @@ export const SettingsDrawer: React.FC = () => {
                   onChange={() => updateConfig({ output_dir_mode: "custom" })}
                   className="accent-[var(--accent-green)]"
                 />
-                <span>全域固定目錄</span>
+                <span>{t("destCustom")}</span>
               </label>
 
               {config.output_dir_mode === "custom" && (
                 <div className="pt-1 pl-5">
                   <input
                     type="text"
-                    placeholder="例如: C:\Users\Photos\Compressed"
+                    placeholder={t("destCustomPlaceholder")}
                     value={config.custom_dir_path || ""}
                     onChange={(e) =>
                       updateConfig({ custom_dir_path: e.target.value })
@@ -93,7 +114,7 @@ export const SettingsDrawer: React.FC = () => {
           {/* 模組 2: 衝突策略 */}
           <div className="space-y-2.5">
             <label className="font-semibold text-[var(--text-muted)] uppercase tracking-wider text-[11.5px]">
-              同名檔案存在時策略
+              {t("sectionConflict")}
             </label>
             <select
               value={config.conflict_strategy}
@@ -104,17 +125,17 @@ export const SettingsDrawer: React.FC = () => {
               }
               className="w-full px-2.5 py-1.5 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[4px] text-[13px] focus:border-[var(--accent-green)] focus:outline-none cursor-pointer"
             >
-              <option value="auto_rename">自動添加後綴 (如 photo_1.jpg)</option>
-              <option value="overwrite">直接覆蓋 (不可逆)</option>
-              <option value="skip">跳過不處理</option>
-              <option value="ask">遇衝突時單獨詢問 (非阻塞)</option>
+              <option value="auto_rename">{t("conflictAutoRename")}</option>
+              <option value="overwrite">{t("conflictOverwriteOpt")}</option>
+              <option value="skip">{t("conflictSkipOpt")}</option>
+              <option value="ask">{t("conflictAskOpt")}</option>
             </select>
           </div>
 
           {/* 模組 3: 中繼資料與色彩空間 */}
           <div className="space-y-2.5">
             <label className="font-semibold text-[var(--text-muted)] uppercase tracking-wider text-[10px]">
-              中繼資料與轉換
+              {t("sectionMetadata")}
             </label>
             <div className="space-y-2">
               <label className="flex items-start gap-2 cursor-pointer">
@@ -127,9 +148,9 @@ export const SettingsDrawer: React.FC = () => {
                   className="mt-0.5 accent-[var(--accent-green)]"
                 />
                 <div>
-                  <span className="font-medium">抹除 EXIF 與 GPS 資訊</span>
+                  <span className="font-medium">{t("stripMetadata")}</span>
                   <p className="text-[11px] text-[var(--text-muted)]">
-                    極小化檔案大小並保護個人隱私
+                    {t("stripMetadataDesc")}
                   </p>
                 </div>
               </label>
@@ -144,38 +165,73 @@ export const SettingsDrawer: React.FC = () => {
                   className="mt-0.5 accent-[var(--accent-green)]"
                 />
                 <div>
-                  <span className="font-medium">自動轉換色彩空間至 sRGB</span>
+                  <span className="font-medium">{t("convertSrgb")}</span>
                   <p className="text-[11px] text-[var(--text-muted)]">
-                    防止 Display P3 等廣色域圖片在舊螢幕產生色偏
+                    {t("convertSrgbDesc")}
                   </p>
                 </div>
               </label>
             </div>
           </div>
 
-          {/* 模組 4: 外觀與主題 */}
+          {/* 模組 4: 介面語系 */}
           <div className="space-y-2.5">
             <label className="font-semibold text-[var(--text-muted)] uppercase tracking-wider text-[10px]">
-              介面主題
+              {t("sectionLanguage")}
             </label>
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  document.documentElement.removeAttribute("data-theme");
-                }}
-                className="flex-1 py-1.5 text-center border border-[var(--border-subtle)] rounded-[4px] bg-[var(--bg-subtle)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer"
+                onClick={() => setLocale("zh-TW")}
+                className={`flex-1 py-1.5 text-center border rounded-[4px] transition-colors cursor-pointer text-[12.5px] font-medium ${
+                  locale === "zh-TW"
+                    ? "border-[var(--accent-green)] text-[var(--accent-green)] bg-[var(--accent-green)]/10"
+                    : "border-[var(--border-subtle)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--border-subtle)]"
+                }`}
               >
-                強制深色
+                繁體中文
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  document.documentElement.setAttribute("data-theme", "light");
-                }}
-                className="flex-1 py-1.5 text-center border border-[var(--border-subtle)] rounded-[4px] bg-[var(--bg-subtle)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer"
+                onClick={() => setLocale("en-US")}
+                className={`flex-1 py-1.5 text-center border rounded-[4px] transition-colors cursor-pointer text-[12.5px] font-medium ${
+                  locale === "en-US"
+                    ? "border-[var(--accent-green)] text-[var(--accent-green)] bg-[var(--accent-green)]/10"
+                    : "border-[var(--border-subtle)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--border-subtle)]"
+                }`}
               >
-                淺色模式
+                English
+              </button>
+            </div>
+          </div>
+
+          {/* 模組 5: 外觀與主題 */}
+          <div className="space-y-2.5">
+            <label className="font-semibold text-[var(--text-muted)] uppercase tracking-wider text-[10px]">
+              {t("sectionAppearance")}
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => handleSetTheme("dark")}
+                className={`flex-1 py-1.5 text-center border rounded-[4px] transition-colors cursor-pointer text-[12.5px] font-medium ${
+                  currentTheme === "dark"
+                    ? "border-[var(--accent-green)] text-[var(--accent-green)] bg-[var(--accent-green)]/10"
+                    : "border-[var(--border-subtle)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--border-subtle)]"
+                }`}
+              >
+                {t("themeDark")}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSetTheme("light")}
+                className={`flex-1 py-1.5 text-center border rounded-[4px] transition-colors cursor-pointer text-[12.5px] font-medium ${
+                  currentTheme === "light"
+                    ? "border-[var(--accent-green)] text-[var(--accent-green)] bg-[var(--accent-green)]/10"
+                    : "border-[var(--border-subtle)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--border-subtle)]"
+                }`}
+              >
+                {t("themeLight")}
               </button>
             </div>
           </div>
@@ -183,7 +239,7 @@ export const SettingsDrawer: React.FC = () => {
 
         {/* 底部關閉提示 */}
         <div className="p-3 border-t border-[var(--border-subtle)] text-center text-[11px] text-[var(--text-dim)]">
-          按 <kbd className="px-1 py-0.5 font-mono bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded">Esc</kbd> 關閉設定抽屜
+          {t("escCloseSettings")}
         </div>
       </aside>
     </div>

@@ -4,7 +4,14 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri + React + Typescript</title>
+    <title>TinySqueeze</title>
+    <script>
+      try {
+        const t = localStorage.getItem("tinysqueeze_theme") || localStorage.getItem("tinypress_theme");
+        if (t === "light") document.documentElement.setAttribute("data-theme", "light");
+        else if (t === "dark") document.documentElement.setAttribute("data-theme", "dark");
+      } catch (e) {}
+    </script>
   </head>
 
   <body>

@@ -7,8 +7,9 @@ import {
   TaskCompletedPayload,
   TaskItem,
 } from "./types";
+import { Locale, getTranslation, TranslationKey } from "./i18n";
 
-interface TinyPressState {
+export interface TinySqueezeState {
   taskIds: string[];
   tasks: Record<string, TaskItem>;
   config: CompressionConfig;
@@ -18,6 +19,7 @@ interface TinyPressState {
   isDraggingOver: boolean;
   cumulativeSavedBytes: number;
   hasShownSummaryModal: boolean;
+  locale: Locale;
 
   // Actions
   addTasks: (newTasks: TaskItem[]) => void;
@@ -27,14 +29,20 @@ interface TinyPressState {
   setConflict: (id: string, candidatePath: string) => void;
   resolveConflict: (id: string, resolution: "overwrite" | "auto_rename" | "skip") => Promise<void>;
   updateConfig: (partial: Partial<CompressionConfig>) => void;
+  isPaused: boolean;
+  setIsPaused: (paused: boolean) => Promise<void>;
   clearList: () => Promise<void>;
-  removeTask: (id: string) => void;
+  removeTask: (id: string) => Promise<void>;
   setSummaryModal: (data: BatchFinishedPayload | null) => void;
   checkAndTriggerSummaryModal: () => void;
   setSettingsOpen: (open: boolean) => void;
   setDraggingOver: (over: boolean) => void;
   reprocessAll: () => Promise<void>;
+  setLocale: (locale: Locale) => void;
+  t: (key: TranslationKey) => string;
 }
+
+export type TinyPressState = TinySqueezeState;
 
 const DEFAULT_CONFIG: CompressionConfig = {
   quality: 75,
@@ -45,9 +53,16 @@ const DEFAULT_CONFIG: CompressionConfig = {
   convert_to_srgb: true,
 };
 
-const SAVED_BYTES_KEY = "tinypress_cumulative_saved_bytes";
+function getMigratedItem(newKey: string, legacyKey: string): string | null {
+  return localStorage.getItem(newKey) ?? localStorage.getItem(legacyKey);
+}
 
-export const useStore = create<TinyPressState>((set, get) => ({
+const SAVED_BYTES_KEY = "tinysqueeze_cumulative_saved_bytes";
+const LEGACY_SAVED_BYTES_KEY = "tinypress_cumulative_saved_bytes";
+const LOCALE_KEY = "tinysqueeze_locale";
+const LEGACY_LOCALE_KEY = "tinypress_locale";
+
+export const useStore = create<TinySqueezeState>((set, get) => ({
   taskIds: [],
   tasks: {},
   config: DEFAULT_CONFIG,
@@ -56,7 +71,18 @@ export const useStore = create<TinyPressState>((set, get) => ({
   summaryModalData: null,
   isDraggingOver: false,
   hasShownSummaryModal: false,
-  cumulativeSavedBytes: Number(localStorage.getItem(SAVED_BYTES_KEY) || "1488977920"), // 預設約 1.38 GB
+  isPaused: false,
+  locale: (getMigratedItem(LOCALE_KEY, LEGACY_LOCALE_KEY) as Locale) || "zh-TW",
+  cumulativeSavedBytes: Number(getMigratedItem(SAVED_BYTES_KEY, LEGACY_SAVED_BYTES_KEY) || "1488977920"), // 預設約 1.38 GB
+
+  setLocale: (locale: Locale) => {
+    localStorage.setItem(LOCALE_KEY, locale);
+    set({ locale });
+  },
+
+  t: (key: TranslationKey) => {
+    return getTranslation(get().locale, key);
+  },
 
   addTasks: (newTasks) => {
     set((state) => {
@@ -75,6 +101,7 @@ export const useStore = create<TinyPressState>((set, get) => ({
         taskIds: nextIds,
         configChangedSinceCompleted: false,
         hasShownSummaryModal: false,
+        isPaused: false,
       };
     });
   },
@@ -215,6 +242,21 @@ export const useStore = create<TinyPressState>((set, get) => ({
     });
   },
 
+  setIsPaused: async (paused: boolean) => {
+    set({ isPaused: paused });
+    if (isTauri()) {
+      try {
+        if (paused) {
+          await invoke("pause_batch");
+        } else {
+          await invoke("resume_batch");
+        }
+      } catch (e) {
+        console.error("Pause/resume batch failed:", e);
+      }
+    }
+  },
+
   clearList: async () => {
     if (isTauri()) {
       try {
@@ -228,10 +270,18 @@ export const useStore = create<TinyPressState>((set, get) => ({
       tasks: {},
       configChangedSinceCompleted: false,
       summaryModalData: null,
+      isPaused: false,
     });
   },
 
-  removeTask: (id) => {
+  removeTask: async (id: string) => {
+    if (isTauri()) {
+      try {
+        await invoke("cancel_task", { taskId: id });
+      } catch (e) {
+        console.error("Cancel task failed:", e);
+      }
+    }
     set((state) => {
       const nextTasks = { ...state.tasks };
       delete nextTasks[id];

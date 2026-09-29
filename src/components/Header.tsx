@@ -8,19 +8,25 @@ import {
   Minus,
   Square,
   X,
-  FileImage,
+  Pause,
+  Play,
 } from "@phosphor-icons/react";
 import { useStore } from "../store";
+import iconLight from "../assets/icon_light.png";
+import iconDark from "../assets/icon_dark.png";
 
 export const Header: React.FC = () => {
   const taskIds = useStore((s) => s.taskIds);
   const tasks = useStore((s) => s.tasks);
   const clearList = useStore((s) => s.clearList);
+  const isPaused = useStore((s) => s.isPaused);
+  const setIsPaused = useStore((s) => s.setIsPaused);
   const configChangedSinceCompleted = useStore(
     (s) => s.configChangedSinceCompleted
   );
   const reprocessAll = useStore((s) => s.reprocessAll);
   const setSettingsOpen = useStore((s) => s.setSettingsOpen);
+  const t = useStore((s) => s.t);
 
   const total = taskIds.length;
   const completed = taskIds.filter(
@@ -107,26 +113,63 @@ export const Header: React.FC = () => {
         data-tauri-drag-region
         className="flex items-center gap-2 cursor-default"
       >
-        <div className="flex items-center justify-center w-6 h-6 rounded bg-[var(--bg-subtle)] text-[var(--accent-green)] border border-[var(--border-subtle)]">
-          <FileImage size={15} weight="bold" />
+        <div className="flex items-center justify-center w-6 h-6 rounded bg-[var(--bg-subtle)] border border-[var(--border-subtle)] p-0.5 overflow-hidden">
+          <img
+            src={iconLight}
+            alt="Logo"
+            className="w-full h-full object-contain hidden [html[data-theme='dark']_&]:block"
+          />
+          <img
+            src={iconDark}
+            alt="Logo"
+            className="w-full h-full object-contain block [html[data-theme='dark']_&]:hidden"
+          />
         </div>
-        <span className="text-[15px] font-semibold tracking-tight">TinyPress</span>
+        <span className="text-[15px] font-semibold tracking-tight">{t("appName")}</span>
       </div>
 
       {/* Center: Dynamic Batch Status */}
       <div
         data-tauri-drag-region
-        className="flex items-center justify-center flex-1 text-[13px] text-[var(--text-muted)] cursor-default"
+        className="flex items-center justify-center flex-1 text-[13px] text-[var(--text-muted)] cursor-default gap-3"
       >
         {isProcessing ? (
-          <span className="flex items-center gap-1.5 font-medium animate-pulse text-[var(--text-main)]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-green)]" />
-            正在處理 {completed}/{total} 張...
-          </span>
-        ) : total > 0 && completed === total ? (
-          <span className="text-[var(--accent-green)] font-medium">
-            全數處理完畢 ({total} 張)
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5 font-medium text-[var(--text-main)]">
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  isPaused
+                    ? "bg-[var(--accent-amber)]"
+                    : "bg-[var(--accent-green)] animate-pulse"
+                }`}
+              />
+              {isPaused
+                ? `${t("queuePaused")} (${completed}/${total})`
+                : `${t("processing")} ${completed}/${total} ${t("imagesUnit")}`}
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsPaused(!isPaused)}
+              className={`flex items-center gap-1 px-2 py-0.5 text-[11.5px] font-medium rounded-[3px] border cursor-pointer transition-colors ${
+                isPaused
+                  ? "bg-[var(--accent-green)]/15 border-[var(--accent-green)]/40 text-[var(--accent-green)] hover:bg-[var(--accent-green)]/25"
+                  : "bg-[var(--bg-surface)] border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-[var(--border-hover)]"
+              }`}
+              title={isPaused ? t("resume") : t("pause")}
+            >
+              {isPaused ? (
+                <>
+                  <Play size={11} weight="fill" />
+                  <span>{t("resume")}</span>
+                </>
+              ) : (
+                <>
+                  <Pause size={11} weight="fill" />
+                  <span>{t("pause")}</span>
+                </>
+              )}
+            </button>
+          </div>
         ) : null}
       </div>
 
@@ -137,11 +180,11 @@ export const Header: React.FC = () => {
           <button
             type="button"
             onClick={() => reprocessAll()}
-            title="快捷列參數已變更，按 R 鍵重新處理全部"
+            title={t("restartTooltip")}
             className="flex items-center gap-1 px-2.5 py-1 text-[13px] font-medium text-[var(--accent-amber)] bg-[var(--bg-surface)] border border-[var(--accent-amber)]/40 rounded-[4px] hover:bg-[var(--accent-amber)]/10 cursor-pointer transition-colors duration-150"
           >
             <ArrowClockwise size={14} weight="bold" />
-            <span>重新處理 (R)</span>
+            <span>{t("restart")}{t("restartKey")}</span>
           </button>
         )}
 
@@ -150,18 +193,18 @@ export const Header: React.FC = () => {
           type="button"
           onClick={() => clearList()}
           disabled={total === 0 || isProcessing}
-          title="清空目前清單"
+          title={t("clear")}
           className="flex items-center gap-1 px-2.5 py-1 text-[13px] text-[var(--text-muted)] hover:text-[var(--text-main)] disabled:opacity-30 disabled:pointer-events-none rounded-[4px] hover:bg-[var(--bg-surface)] cursor-pointer transition-colors duration-150"
         >
           <Trash size={14} />
-          <span>清空</span>
+          <span>{t("clear")}</span>
         </button>
 
         {/* Settings Gear Button */}
         <button
           type="button"
           onClick={() => setSettingsOpen(true)}
-          title="偏好設定"
+          title={t("settings")}
           className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface)] rounded-[4px] cursor-pointer transition-colors duration-150"
         >
           <GearSix size={17} />
@@ -175,7 +218,7 @@ export const Header: React.FC = () => {
           <button
             type="button"
             onClick={handleMinimize}
-            title="最小化"
+            title={t("minimize")}
             className="flex items-center justify-center w-8 h-8 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface)] rounded-[2px] cursor-pointer transition-colors"
           >
             <Minus size={14} />
@@ -183,7 +226,7 @@ export const Header: React.FC = () => {
           <button
             type="button"
             onClick={handleToggleMaximize}
-            title="最大化 / 還原"
+            title={t("maximize")}
             className="flex items-center justify-center w-8 h-8 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface)] rounded-[2px] cursor-pointer transition-colors"
           >
             <Square size={12} />
@@ -191,7 +234,7 @@ export const Header: React.FC = () => {
           <button
             type="button"
             onClick={handleClose}
-            title="關閉"
+            title={t("close")}
             className="flex items-center justify-center w-8 h-8 text-[var(--text-muted)] hover:text-white hover:bg-[var(--accent-red)] rounded-[2px] cursor-pointer transition-colors"
           >
             <X size={14} />

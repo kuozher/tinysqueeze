@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { formatBytes } from "../utils";
+import { useStore } from "../store";
 
 interface AnimatedSizeProps {
   originalSize: number;
@@ -12,6 +13,7 @@ export const AnimatedSize: React.FC<AnimatedSizeProps> = ({
   targetSize,
   isCompleted,
 }) => {
+  const t = useStore((s) => s.t);
   const [currentSize, setCurrentSize] = useState<number>(originalSize);
 
   useEffect(() => {
@@ -45,19 +47,26 @@ export const AnimatedSize: React.FC<AnimatedSizeProps> = ({
 
   if (!isCompleted || targetSize === undefined) {
     return (
-      <span className="font-mono tabular-nums text-[13px] text-[var(--text-muted)]">
-        {formatBytes(originalSize)}
-      </span>
+      <div className="flex flex-col items-end leading-tight font-mono tabular-nums select-none">
+        <span className="text-[11px] text-[var(--text-muted)]">
+          {formatBytes(originalSize)}
+        </span>
+        <span className="text-[11.5px] text-[var(--text-dim)]">
+          {t("processingEllipsis")}
+        </span>
+      </div>
     );
   }
 
   return (
-    <span className="font-mono tabular-nums text-[13px] text-[var(--text-muted)]">
-      <span>{formatBytes(originalSize)}</span>
-      <span className="mx-1.5 text-[var(--text-dim)]">→</span>
-      <span className="font-semibold text-[var(--text-main)]">
-        {formatBytes(currentSize)}
+    <div className="flex flex-col items-end leading-tight font-mono tabular-nums select-none">
+      <span className="text-[11px] text-[var(--text-muted)]">
+        {formatBytes(originalSize)}
       </span>
-    </span>
+      <span className="flex items-center justify-end gap-1 font-semibold text-[13px] text-[var(--text-main)]">
+        <span className="text-[var(--text-dim)] font-normal text-[11px]">→</span>
+        <span>{formatBytes(currentSize)}</span>
+      </span>
+    </div>
   );
 };

@@ -45,8 +45,16 @@ static JOURNAL_LOCK: Mutex<()> = Mutex::new(());
 impl InFlightJournal {
     fn journal_path() -> Option<PathBuf> {
         dirs::data_local_dir().map(|mut p| {
-            p.push("tinypress");
+            p.push("tinysqueeze");
             let _ = fs::create_dir_all(&p);
+            p.push("in_flight_temps.json");
+            p
+        })
+    }
+
+    fn legacy_journal_path() -> Option<PathBuf> {
+        dirs::data_local_dir().map(|mut p| {
+            p.push("tinypress");
             p.push("in_flight_temps.json");
             p
         })
@@ -90,10 +98,26 @@ impl InFlightJournal {
     pub fn sweep_orphans_on_startup() {
         std::thread::spawn(|| {
             let _guard = JOURNAL_LOCK.lock().unwrap();
+            let now = SystemTime::now();
+
+            // 1. 清理舊版 tinypress 遺留清單（若存在）
+            if let Some(legacy_file) = Self::legacy_journal_path() {
+                if legacy_file.exists() {
+                    let legacy_list = Self::read_list(&legacy_file);
+                    for item in legacy_list {
+                        let path = PathBuf::from(&item);
+                        if path.exists() {
+                            let _ = fs::remove_file(&path);
+                        }
+                    }
+                    let _ = fs::remove_file(&legacy_file);
+                }
+            }
+
+            // 2. 清理當前 tinysqueeze 清單
             if let Some(journal_file) = Self::journal_path() {
                 let list = Self::read_list(&journal_file);
                 let mut remaining = Vec::new();
-                let now = SystemTime::now();
 
                 for item in list {
                     let path = PathBuf::from(&item);

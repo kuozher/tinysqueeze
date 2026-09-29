@@ -19,9 +19,67 @@ export const App: React.FC = () => {
   const addTasks = useStore((s) => s.addTasks);
   const isDraggingOver = useStore((s) => s.isDraggingOver);
   const setDraggingOver = useStore((s) => s.setDraggingOver);
+  const t = useStore((s) => s.t);
 
   useTauriEvents();
   useKeyboardStack();
+
+  // 同步初始化介面主題
+  useEffect(() => {
+    const savedTheme =
+      localStorage.getItem("tinysqueeze_theme") ??
+      localStorage.getItem("tinypress_theme");
+    if (savedTheme === "light") {
+      document.documentElement.setAttribute("data-theme", "light");
+    } else {
+      document.documentElement.setAttribute("data-theme", "dark");
+    }
+  }, []);
+
+  // 視窗尺寸記憶與還原：全新開啟為最小寬度 (720px)，重複開啟為上次關閉前的自訂尺寸
+  useEffect(() => {
+    if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) {
+      return;
+    }
+
+    const savedWidth =
+      localStorage.getItem("tinysqueeze_window_width") ??
+      localStorage.getItem("tinypress_window_width");
+    const savedHeight =
+      localStorage.getItem("tinysqueeze_window_height") ??
+      localStorage.getItem("tinypress_window_height");
+
+    if (savedWidth && savedHeight) {
+      const w = Math.max(720, parseFloat(savedWidth));
+      const h = Math.max(500, parseFloat(savedHeight));
+      invoke("window_set_size", { width: w, height: h }).catch(console.error);
+    }
+
+    let resizeTimer: ReturnType<typeof setTimeout>;
+    const handleResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(async () => {
+        try {
+          const isMax = await invoke<boolean>("window_is_maximized");
+          if (!isMax && window.innerWidth >= 720 && window.innerHeight >= 500) {
+            localStorage.setItem("tinysqueeze_window_width", window.innerWidth.toString());
+            localStorage.setItem("tinysqueeze_window_height", window.innerHeight.toString());
+          }
+        } catch {
+          if (window.innerWidth >= 720 && window.innerHeight >= 500) {
+            localStorage.setItem("tinysqueeze_window_width", window.innerWidth.toString());
+            localStorage.setItem("tinysqueeze_window_height", window.innerHeight.toString());
+          }
+        }
+      }, 300);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => {
+      clearTimeout(resizeTimer);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
   // 防止瀏覽器預設將拖入的檔案直接開啟/導航，確保 WebView2 拖放事件持續有效
   useEffect(() => {
@@ -55,14 +113,17 @@ export const App: React.FC = () => {
 
         if (scanned.length === 0) return;
 
-        // 嚴格僅挑選出尚未存在於佇列中的全新檔案，絕不重轉已完成的舊檔案
+        // 已完成的項目僅為歷史回報結果；拖入的新檔案皆作為新任務推入佇列
+        // 僅排除當下「正處於處理中」的相同路徑檔案，避免同檔並發寫入衝突
         const currentTasks = useStore.getState().tasks;
-        const existingPaths = new Set(
-          Object.values(currentTasks).map((t) => t.filePath)
+        const activelyProcessingPaths = new Set(
+          Object.values(currentTasks)
+            .filter((t) => t.status === "processing")
+            .map((t) => t.filePath)
         );
 
         const newScanned = scanned.filter(
-          (t) => !existingPaths.has(t.file_path)
+          (t) => !activelyProcessingPaths.has(t.file_path)
         );
         if (newScanned.length === 0) return;
 
@@ -207,10 +268,10 @@ export const App: React.FC = () => {
             <div className="flex flex-col items-center gap-2.5 p-6 rounded-[8px] bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-2xl">
               <CloudArrowUp size={38} weight="bold" className="text-[var(--accent-green)] animate-pulse" />
               <span className="text-[15px] font-semibold text-[var(--text-main)]">
-                釋放滑鼠以加入圖片佇列
+                {t("dragOverlayTitle")}
               </span>
               <span className="text-[13px] text-[var(--text-muted)]">
-                支援 JPG、PNG、WebP、AVIF，將自動啟動壓縮
+                {t("dragOverlaySubtitle")}
               </span>
             </div>
           </div>

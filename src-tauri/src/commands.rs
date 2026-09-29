@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use tauri::{AppHandle, State};
 use uuid::Uuid;
@@ -154,4 +155,45 @@ pub async fn window_close(window: tauri::Window) -> Result<(), String> {
 pub async fn window_start_dragging(window: tauri::Window) -> Result<(), String> {
     window.start_dragging().map_err(|e| e.to_string())
 }
+
+/// 佇列暫停：凍結後續 Worker 派發
+#[tauri::command]
+pub async fn pause_batch(state: State<'_, Arc<PipelineState>>) -> Result<(), String> {
+    state.is_paused.store(true, Ordering::SeqCst);
+    Ok(())
+}
+
+/// 佇列繼續：喚醒等待中的 Worker 繼續派發
+#[tauri::command]
+pub async fn resume_batch(state: State<'_, Arc<PipelineState>>) -> Result<(), String> {
+    state.is_paused.store(false, Ordering::SeqCst);
+    state.pause_notify.notify_waiters();
+    Ok(())
+}
+
+/// 取消特定任務排程（從佇列移除）
+#[tauri::command]
+pub async fn cancel_task(
+    state: State<'_, Arc<PipelineState>>,
+    task_id: String,
+) -> Result<(), String> {
+    state.cancelled_tasks.insert(task_id, true);
+    Ok(())
+}
+
+/// 視窗控制：設定視窗尺寸
+#[tauri::command]
+pub async fn window_set_size(window: tauri::Window, width: f64, height: f64) -> Result<(), String> {
+    window
+        .set_size(tauri::LogicalSize::new(width, height))
+        .map_err(|e| e.to_string())
+}
+
+/// 視窗控制：查詢是否為最大化
+#[tauri::command]
+pub async fn window_is_maximized(window: tauri::Window) -> Result<bool, String> {
+    window.is_maximized().map_err(|e| e.to_string())
+}
+
+
 

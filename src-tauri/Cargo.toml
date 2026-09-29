@@ -1,12 +1,12 @@
 [package]
-name = "tinypress"
+name = "tinysqueeze"
 version = "0.1.0"
 description = "A lightweight image compression and format conversion desktop tool"
-authors = ["tinypress"]
+authors = ["TinySqueeze"]
 edition = "2021"
 
 [lib]
-name = "tinypress_lib"
+name = "tinysqueeze_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
