@@ -1,6 +1,6 @@
 [package]
 name = "tinysqueeze"
-version = "0.1.0"
+version = "1.0.0"
 description = "A lightweight image compression and format conversion desktop tool"
 authors = ["TinySqueeze"]
 edition = "2021"
