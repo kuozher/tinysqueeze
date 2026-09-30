@@ -28,7 +28,7 @@
 
 | 1. Standby & Dropzone | 2. Live Compression Queue | 3. Batch Results & Filter |
 | :---: | :---: | :---: |
-| <img src="assets/screenshot_01.png" alt="Standby & Dropzone" width="280" /> | <img src="assets/screenshot_02.png" alt="Compression Queue" width="280" /> | <img src="assets/screenshot_03_2.png" alt="Batch Results & Filter" width="280" /> |
+| <img src="assets/screenshot_01.png" alt="Standby & Dropzone" width="280" /> | <img src="assets/screenshot_02.png" alt="Compression Queue" width="280" /> | <img src="assets/screenshot_03.png" alt="Batch Results & Filter" width="280" /> |
 
 ---
 
