@@ -56,6 +56,17 @@ export function useKeyboardStack() {
       }
 
       // Layer 1: 全域工作區快捷鍵
+      if (e.key === "Escape") {
+        const isProcessing = useStore.getState().taskIds.some(
+          (id) => useStore.getState().tasks[id]?.status === "processing"
+        );
+        if (isProcessing) {
+          e.preventDefault();
+          useStore.getState().cancelAll();
+          return;
+        }
+      }
+
       if ((e.key === "r" || e.key === "R") && !e.ctrlKey && !e.metaKey && !e.altKey) {
         if (configChangedSinceCompleted) {
           e.preventDefault();

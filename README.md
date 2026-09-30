@@ -7,7 +7,7 @@
 **A lightweight, privacy-first desktop tool for batch image compression and format conversion.**  
 **極致輕量、本機離線的高效能批次圖片壓縮與轉檔工具**
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/)
+[![Version](https://img.shields.io/badge/version-1.3.3-blue.svg)](https://github.com/kuozher/tinysqueeze/releases)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-blue?logo=tauri)](https://tauri.app/)
 [![Rust](https://img.shields.io/badge/Rust-2021-orange?logo=rust)](https://www.rust-lang.org/)
 [![React](https://img.shields.io/badge/React-19-cyan?logo=react)](https://react.dev/)
@@ -26,9 +26,9 @@
 
 ## 📷 Interface Preview
 
-| 1. Standby & Dropzone | 2. Live Compression Queue | 3. Batch Summary Modal |
+| 1. Standby & Dropzone | 2. Live Compression Queue | 3. Batch Results & Filter |
 | :---: | :---: | :---: |
-| <img src="assets/screenshot_01.png" alt="Standby & Dropzone" width="280" /> | <img src="assets/screenshot_02.png" alt="Compression Queue" width="280" /> | <img src="assets/screenshot_03.png" alt="Summary Modal" width="280" /> |
+| <img src="assets/screenshot_01.png" alt="Standby & Dropzone" width="280" /> | <img src="assets/screenshot_02.png" alt="Compression Queue" width="280" /> | <img src="assets/screenshot_03_2.png" alt="Batch Results & Filter" width="280" /> |
 
 ---
 
@@ -40,7 +40,7 @@
 
 ## 🤖 AI Transparency & Disclosure
 
-> **This project was implemented end-to-end with Google Gemini 3.8 Flash (High). The concept, product direction, UI/UX design review, and original app icons were created and directed by the author.**
+> **This project was implemented entirely using Google Gemini 3.8 Flash (High). Some improvement ideas were developed through interaction with Claude Sonnet 5.5 (medium), while the project direction, UI/UX review, and icon creation were conceived and executed by the author.**
 
 ---
 
@@ -50,18 +50,26 @@ TinySqueeze focuses on pure speed, visual quality, and rock-solid stability with
 
 - **🔒 100% Local & Privacy-First**:
   All encoding and decoding happen entirely on your device via native Rust cores. No network calls, no cloud servers, no API quotas or subscription fees. Your private photos and sensitive commercial graphics never leave your computer.
+- **🧭 EXIF Orientation Auto-Correction**:
+  Automatically normalizes camera and smartphone photo orientations based on EXIF metadata before stripping tags, guaranteeing thumbnails and compressed files are upright and distortion-free.
 - **🎯 MozJPEG Perceptual Quantization & 4:4:4 Chroma Subsampling**:
   Traditional encoders default to aggressive 4:2:0 subsampling, causing blurry edges and bleeding on UI screenshots, graphics, and text. TinySqueeze uses perceptual quantization matrices (Ahumada-Watson) and preserves 4:4:4 chroma where needed, matching or surpassing TinyJPG's text crispness.
 - **⚡ Dual-Lane Pipeline Architecture**:
-  - **Fast Lane**: Extracts 80×80 WebP thumbnails in async background threads, cached in DashMap memory for instant zero-latency UI rendering.
+  - **Fast Lane**: Extracts 80×80 WebP thumbnails in async background threads, converted to instant data URLs to bypass Windows WebView2 security sandbox restrictions with zero protocol overhead.
   - **Heavy Lane**: Scales workers dynamically based on CPU core count, governed by a `512MB` memory semaphore. Queueing hundreds of multi-megapixel images will never freeze the system or cause out-of-memory crashes.
+- **📊 Non-blocking Sticky Result Bar**:
+  Replaces disruptive modal popups with a top sticky result bar featuring smooth slide transitions. Shows overall space saved, processed counts, instant "Failed Only" filtering, and one-click opening of output destination folders.
+- **⚙️ Advanced Conflict Management & Output Routing**:
+  - 4 conflict resolution strategies: Auto Rename (`_1`), Overwrite, Skip, or Ask Individually (non-blocking per-item decision directly in the queue row).
+  - Flexible destination options: same directory as original, relative subfolder (`min/`), or fixed global directory.
+  - Customizable filename suffix with real-time preview (default `_min`).
 - **🛡️ Anti-Bloat Guard & 100% Lossless Mode**:
-  - Selecting `100%` quality triggers true mathematical lossless encoding for WebP.
-  - If a compressed file ends up larger than the original due to edge-case noise, the pipeline automatically keeps the original file.
-- **💾 Atomic Writes & RAII Temp Sweep**:
-  Encodes to `.image.tinysqueeze_tmp_{uuid}` temporary files first and atomically renames them upon success. Crash-resilient RAII guards and cold-startup sweepers ensure zero orphaned temp files.
-- **🌓 Native Dark/Light Themes & Bilingual UI**:
-  Designed with a dark-first tool aesthetic (`#121314`) to protect image viewing clarity. Supports one-click switching to light mode and instant bilingual toggling between Traditional Chinese and English.
+  - Selecting `100%` quality triggers true mathematical lossless encoding.
+  - If a compressed file ends up larger than the original due to edge-case noise, automatically keeps the original file.
+- **💾 Atomic Writes, Cancel All & Temp Sweep**:
+  Encodes to temporary files first and atomically renames them upon completion. Supports instant "Cancel All" with automatic worker termination and cold-startup cleanup for zero orphaned files.
+- **🌓 Accessible Light/Dark Themes & Full Bilingual UI**:
+  Features a high-contrast palette meeting WCAG AAA requirements in light mode (`#056547` primary accents with pure white text) and a distraction-free dark mode. Fully localized in Traditional Chinese and English with keyboard shortcuts (`Esc` to close drawers, `C` to clear, `R` to restart).
 
 ---
 
@@ -69,18 +77,20 @@ TinySqueeze focuses on pure speed, visual quality, and rock-solid stability with
 
 | Format | Decoding (Input) | Encoding (Output) | Highlights |
 | :---: | :---: | :---: | :--- |
-| **JPEG / JPG** | ✅ | ✅ | MozJPEG perceptual quantization, adaptive 4:4:4 chroma |
+| **JPEG / JPG** | ✅ | ✅ | MozJPEG perceptual quantization, adaptive 4:4:4 chroma, EXIF auto-rotation |
 | **PNG** | ✅ | ✅ | oxipng parallel filters, imagequant color quantization |
 | **WebP** | ✅ | ✅ | Lossy compression & 100% pure mathematical lossless |
-| **AVIF** | ✅ | ✅ | High-efficiency next-gen compression via ravif |
+| **AVIF** | ❌ *(Output only)* | ✅ | High-efficiency next-gen compression via ravif (Encoding output only) |
 | **Original** | — | ✅ | Preserves original extension while slimming file size |
 
 ---
 
-## 📥 Installation & Windows Security Notice
+## 📥 Installation & Downloads
 
-### Windows Installer (.msi / .exe)
-You can download the pre-compiled installer from GitHub Releases or build it from source.
+Pre-built binaries for Windows (x64) are available on [GitHub Releases](https://github.com/kuozher/tinysqueeze/releases):
+
+- **Windows Setup Installer (`TinySqueeze_1.3.3_x64-setup.exe` / `.msi`)**: Standard installation with Start Menu integration and uninstaller.
+- **Windows Portable Edition (`TinySqueeze_v1.3.3_x64_portable.zip` / `TinySqueeze.exe`)**: Standalone binary ready to run immediately from a flash drive or desktop without installation.
 
 > [!NOTE]
 > **Windows SmartScreen Notice**:  
@@ -102,7 +112,7 @@ You can download the pre-compiled installer from GitHub Releases or build it fro
 
 ```bash
 # Clone the repository
-git clone https://github.com/<your-username>/tinysqueeze.git
+git clone https://github.com/kuozher/tinysqueeze.git
 cd tinysqueeze
 
 # Install frontend dependencies
@@ -122,9 +132,9 @@ npm run tauri build
 
 ## 📷 介面預覽
 
-| 1. 待機拖曳區 | 2. 轉檔佇列與平滑進度 | 3. 結算摘要彈窗 |
+| 1. 待機拖曳區 | 2. 轉檔佇列與縮圖預覽 | 3. 頂部結算條與篩選 |
 | :---: | :---: | :---: |
-| <img src="assets/screenshot_01.png" alt="待機拖曳區" width="280" /> | <img src="assets/screenshot_02.png" alt="轉檔佇列" width="280" /> | <img src="assets/screenshot_03.png" alt="結算摘要" width="280" /> |
+| <img src="assets/screenshot_01.png" alt="待機拖曳區" width="280" /> | <img src="assets/screenshot_02.png" alt="轉檔佇列" width="280" /> | <img src="assets/screenshot_03.png" alt="頂部結算條" width="280" /> |
 
 ---
 
@@ -136,7 +146,7 @@ npm run tauri build
 
 ## 🤖 AI 參與揭露
 
-> **本專案程式全程使用 Google Gemini 3.8 Flash (High) 實做，並由作者本人構思專案方向、審核 UI/UX、製作 icon。**
+> **本專案程式全程使用 Google Gemini 3.8 Flash (High) 實做，部份改進構思是與 claude sonnet 5.5 (medium)互動，並由作者本人構思專案方向、審核 UI/UX、製作 icon。**
 
 ---
 
@@ -146,18 +156,26 @@ TinySqueeze 專注於極致輕快、安全無損的本機圖片壓縮與格式�
 
 - **🔒 100% 本機原生運行，零隱私洩漏**：
   所有編解碼皆由 Rust 本機核心原生運算。無任何網路請求、不依賴外部 Python/Node.js runtime、無雲端 API 額度限制，商業設計稿與敏感照片絕不上雲。
+- **🧭 EXIF 方向自動導正**：
+  在抹除中繼資料以保護隱私前，自動解析數位相機與手機拍攝之 EXIF 旋轉標記並物理轉正像素，徹底解決壓縮後照片歪斜翻轉的問題。
 - **🎯 MozJPEG 感知量化與自適應採樣（對標 TinyJPG 銳利度）**：
   傳統工具預設強制 4:2:0 色度降採樣，造成文字邊緣模糊發虛與色彩滲透。TinySqueeze 整合 Ahumada-Watson 感知量化矩陣與自適應 4:4:4 色度採樣，在大幅瘦身同時維持細緻文字線條。
 - **⚡ 雙通道管線架構與記憶體水線**：
-  - **Fast Lane（極速通道）**：拖入檔案即刻由非同步背景執行緒抽取輕量 80×80 WebP 縮圖並寫入 DashMap 快取，毫秒級顯示清單。
+  - **Fast Lane（極速通道）**：拖入檔案即刻由非同步背景執行緒抽取輕量 80×80 WebP 縮圖，直接以 Base64 Data URL 傳遞給前端，徹底規避 Windows WebView2 沙盒自訂協議限制，達到零延遲即時呈現。
   - **Heavy Lane（編碼通道）**：動態依 CPU 核心分配編碼執行緒，並受 `512MB` 記憶體門禁計數器（Semaphore）保護，百張大圖同時拖入不爆記憶體。
+- **📊 頂部平滑滑動結算條**：
+  捨棄打斷操作流程的中間彈窗，改採頂部非阻塞滑動結算條。清晰回報整體節省體積、完成張數、一鍵開啟輸出目的地資料夾，並支援「僅看失敗」即時排錯篩選。
+- **⚙️ 靈活檔案衝突管理與自訂輸出目錄**：
+  - 提供 4 種同名衝突策略：自動添加序號後綴（`_1`）、直接覆蓋、跳過不處理、單獨詢問（直接在任務列表行內選擇，非阻塞佇列）。
+  - 多樣輸出路徑模式：原檔同層、原檔相對子資料夾（`min/`）、全域固定目錄。
+  - 支援檔名自訂後綴（預設 `_min`）並具備即時效果預覽。
 - **🛡️ 負向膨脹防禦與 100% 真無損**：
-  - 當品質拉至 100% 時，WebP 自動啟動純數學無損編碼。
-  - 若壓縮後體積反向膨脹，管線自動維持原檔輸出，杜絕越壓越大的情況。
-- **💾 原子落盤與孤兒暫存防禦**：
-  採暫存檔寫入後原子替換（Atomic Rename），避免寫入中途遭中斷損壞原檔；搭配 RAII Guard 與冷啟動清掃器，程式斷電重開亦能自動回收孤兒檔案。
-- **🌓 原生深淺雙色與雙語系支援**：
-  低彩度暗色專業工具介面，並支援淺色模式與繁體中文 / English 即時切換。
+  - 當品質拉至 100% 時，自動啟動純數學無損編碼。
+  - 若壓縮後體積反向膨脹，自動維持原檔輸出，杜絕越壓越大的情況。
+- **💾 原子落盤、立即取消與孤兒暫存防禦**：
+  採暫存檔寫入後原子替換（Atomic Rename），支援「取消全部」立即中斷所有背景執行緒與清掃暫存；搭配冷啟動掃描器，程式異常中斷亦能自動回收孤兒暫存檔。
+- **🌓 高可讀性雙色模式與雙語系支援**：
+  淺色模式完全符合 WCAG AAA 高對比規範（綠色底 `#056547` 搭配純白字體），搭配暗色工具箱美學。支援繁體中文與英文即時切換，並完整支援 `Esc` 關閉設定側欄、`C` 清空列表、`R` 快速重跑等鍵盤快捷鍵。
 
 ---
 
@@ -165,18 +183,20 @@ TinySqueeze 專注於極致輕快、安全無損的本機圖片壓縮與格式�
 
 | 格式 | 解碼輸入 (Input) | 編碼輸出 (Output) | 特色說明 |
 | :---: | :---: | :---: | :--- |
-| **JPEG / JPG** | ✅ | ✅ | MozJPEG 感知量化、自適應 4:4:4 色度採樣 |
+| **JPEG / JPG** | ✅ | ✅ | MozJPEG 感知量化、自適應 4:4:4 色度採樣、EXIF 自動轉正 |
 | **PNG** | ✅ | ✅ | oxipng 並發濾鏡優化、色彩量化 (imagequant) |
 | **WebP** | ✅ | ✅ | 支援一般有損壓縮與 100% 純數學無損編碼 |
-| **AVIF** | ✅ | ✅ | ravif 次世代高壓縮比格式支援 |
+| **AVIF** | ❌（僅限輸出） | ✅ | ravif 次世代高壓縮比輸出（為保持二進位極致輕量，目前不支援作為來源圖檔解碼輸入） |
 | **原格式 (Original)** | — | ✅ | 自動沿用原圖副檔名並進行高效瘦身 |
 
 ---
 
-## 📥 安裝與 Windows 安全提示說明
+## 📥 安裝與發行下載
 
-### 下載安裝檔 (.msi / .exe)
-您可以直接從 GitHub Releases 下載預編譯安裝包，或依下方教學自行由原始碼編譯。
+可於 [GitHub Releases](https://github.com/kuozher/tinysqueeze/releases) 取得 Windows (x64) 預編譯檔案：
+
+- **Windows 安裝檔 (`TinySqueeze_1.3.3_x64-setup.exe` / `.msi`)**：標準安裝程式，具備開始功能表捷徑與卸載支援。
+- **免安裝可攜版 (`TinySqueeze_v1.3.3_x64_portable.zip` / `TinySqueeze.exe`)**：解壓縮或直接點擊即可在任何資料夾、USB 隨身碟中執行，不殘留系統註冊表。
 
 > [!NOTE]
 > **Windows SmartScreen 提示說明**：  
@@ -193,7 +213,7 @@ TinySqueeze 專注於極致輕快、安全無損的本機圖片壓縮與格式�
 
 ```bash
 # 複製專案
-git clone https://github.com/<your-username>/tinysqueeze.git
+git clone https://github.com/kuozher/tinysqueeze.git
 cd tinysqueeze
 
 # 安裝前端相依套件

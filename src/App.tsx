@@ -11,8 +11,8 @@ import { QuickBar } from "./components/QuickBar";
 import { EmptyState } from "./components/EmptyState";
 import { TaskList } from "./components/TaskList";
 import { SettingsDrawer } from "./components/SettingsDrawer";
-import { SummaryModal } from "./components/SummaryModal";
-import { TaskItem } from "./types";
+import { Toast } from "./components/Toast";
+import { TaskItem, ScanResult } from "./types";
 
 export const App: React.FC = () => {
   const taskIds = useStore((s) => s.taskIds);
@@ -81,37 +81,23 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  // 防止瀏覽器預設將拖入的檔案直接開啟/導航，確保 WebView2 拖放事件持續有效
-  useEffect(() => {
-    const handleWindowDragOver = (e: DragEvent) => {
-      e.preventDefault();
-    };
-    const handleWindowDrop = (e: DragEvent) => {
-      e.preventDefault();
-    };
-    window.addEventListener("dragover", handleWindowDragOver);
-    window.addEventListener("drop", handleWindowDrop);
-    return () => {
-      window.removeEventListener("dragover", handleWindowDragOver);
-      window.removeEventListener("drop", handleWindowDrop);
-    };
-  }, []);
-
   const handleIngestPaths = useCallback(
     async (paths: string[]) => {
       if (!paths || paths.length === 0) return;
 
       try {
-        const scanned = await invoke<
-          Array<{
-            id: string;
-            file_path: string;
-            file_name: string;
-            file_size: number;
-          }>
-        >("scan_paths", { paths });
+        const scanRes = await invoke<ScanResult>("scan_paths", { paths });
 
-        if (scanned.length === 0) return;
+        if (scanRes.tasks.length === 0) {
+          if (scanRes.avif_count > 0) {
+            useStore.getState().showToast(t("warnAvifInput"), "warning");
+          } else {
+            useStore.getState().showToast(t("warnUnsupportedFiles"), "warning");
+          }
+          return;
+        }
+
+        const scanned = scanRes.tasks;
 
         // 已完成的項目僅為歷史回報結果；拖入的新檔案皆作為新任務推入佇列
         // 僅排除當下「正處於處理中」的相同路徑檔案，避免同檔並發寫入衝突
@@ -125,7 +111,9 @@ export const App: React.FC = () => {
         const newScanned = scanned.filter(
           (t) => !activelyProcessingPaths.has(t.file_path)
         );
-        if (newScanned.length === 0) return;
+        if (newScanned.length === 0) {
+          return;
+        }
 
         const newItems: TaskItem[] = newScanned.map((t) => ({
           id: t.id,
@@ -144,10 +132,44 @@ export const App: React.FC = () => {
         });
       } catch (err) {
         console.error("Path ingestion failed:", err);
+        useStore.getState().showToast(`${t("errReadFailed")} ${err}`, "error");
       }
     },
-    [addTasks]
+    [addTasks, t]
   );
+
+  // 防止瀏覽器預設開啟圖檔，並作為 WebView2 HTML5 拖放事件備援通道
+  useEffect(() => {
+    let lastDropTime = 0;
+    const handleWindowDragOver = (e: DragEvent) => {
+      e.preventDefault();
+    };
+    const handleWindowDrop = (e: DragEvent) => {
+      e.preventDefault();
+      const now = Date.now();
+      if (now - lastDropTime < 300) return;
+      lastDropTime = now;
+
+      if (e.dataTransfer && e.dataTransfer.files.length > 0) {
+        const paths: string[] = [];
+        for (let i = 0; i < e.dataTransfer.files.length; i++) {
+          const f = e.dataTransfer.files[i] as any;
+          if (f.path) {
+            paths.push(f.path);
+          }
+        }
+        if (paths.length > 0) {
+          handleIngestPaths(paths);
+        }
+      }
+    };
+    window.addEventListener("dragover", handleWindowDragOver);
+    window.addEventListener("drop", handleWindowDrop);
+    return () => {
+      window.removeEventListener("dragover", handleWindowDragOver);
+      window.removeEventListener("drop", handleWindowDrop);
+    };
+  }, [handleIngestPaths]);
 
   // 監聽 Tauri 原生視窗拖放事件
   useEffect(() => {
@@ -159,7 +181,7 @@ export const App: React.FC = () => {
     const setupDragDrop = async () => {
       const appWindow = getCurrentWindow();
       unlisten = await appWindow.onDragDropEvent((event) => {
-        if (event.payload.type === "over") {
+        if (event.payload.type === "over" || event.payload.type === "enter") {
           setDraggingOver(true);
         } else if (event.payload.type === "drop") {
           setDraggingOver(false);
@@ -254,10 +276,16 @@ export const App: React.FC = () => {
       {/* 頂部全域列 (48px) */}
       <Header />
 
+      {/* 全域非阻塞 Toast 提示 */}
+      <Toast />
+
       {/* 主工作區 (待機空狀態 vs 清單佇列) */}
       <main className="flex-1 flex flex-col min-h-0 relative overflow-hidden">
         {taskIds.length === 0 ? (
-          <EmptyState onFilesSelected={handleFilesSelected} />
+          <EmptyState
+            onFilesSelected={handleFilesSelected}
+            onPathsSelected={handleIngestPaths}
+          />
         ) : (
           <TaskList />
         )}
@@ -283,9 +311,6 @@ export const App: React.FC = () => {
 
       {/* 偏好設定抽屜 (360px) */}
       <SettingsDrawer />
-
-      {/* 結算摘要彈窗 */}
-      <SummaryModal />
     </div>
   );
 };

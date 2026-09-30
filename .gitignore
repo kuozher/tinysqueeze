@@ -29,3 +29,4 @@ src-tauri/gen/
 
 # Scratch & temporary workspace
 scratch/
+release/

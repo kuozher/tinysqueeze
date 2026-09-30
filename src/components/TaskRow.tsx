@@ -11,24 +11,46 @@ interface TaskRowProps {
   index: number;
 }
 
-const TaskProgressBar: React.FC = () => {
-  const [progress, setProgress] = useState(25);
+interface TaskProgressBarProps {
+  stage?: "decoding" | "encoding" | "writing";
+}
+
+const TaskProgressBar: React.FC<TaskProgressBarProps> = ({ stage }) => {
+  const t = useStore((s) => s.t);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setProgress(65), 70);
-    const t2 = setTimeout(() => setProgress(90), 180);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
+    const timer = setInterval(() => {
+      setElapsedSeconds((s) => s + 1);
+    }, 1000);
+    return () => clearInterval(timer);
   }, []);
 
+  const progressPercent =
+    stage === "writing" ? 92 : stage === "encoding" ? 64 : stage === "decoding" ? 32 : 15;
+
+  const stageLabel =
+    stage === "writing"
+      ? t("stageWriting")
+      : stage === "encoding"
+      ? t("stageEncoding")
+      : stage === "decoding"
+      ? t("stageDecoding")
+      : t("stageWaiting");
+
   return (
-    <div className="flex items-center justify-end w-full">
-      <div className="w-[88px] h-2 bg-[var(--bg-subtle)] rounded-[3px] overflow-hidden border border-[var(--border-subtle)] relative">
+    <div className="flex flex-col items-end justify-center w-full gap-1">
+      <div className="flex items-center gap-1.5 text-[11px] font-mono text-[var(--text-muted)]">
+        <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--accent-green)] animate-pulse" />
+        <span>{stageLabel}</span>
+        {elapsedSeconds >= 10 && (
+          <span className="text-[10px] text-[var(--text-dim)]">{elapsedSeconds}s</span>
+        )}
+      </div>
+      <div className="w-[88px] h-1.5 bg-[var(--bg-subtle)] rounded-[3px] overflow-hidden border border-[var(--border-subtle)] relative">
         <div
-          className="h-full bg-[var(--accent-green)] rounded-[2px] transition-all duration-200 ease-out shadow-[0_0_6px_rgba(52,211,153,0.5)]"
-          style={{ width: `${progress}%` }}
+          className="h-full bg-[var(--accent-green)] rounded-[2px] transition-all duration-300 ease-out shadow-[0_0_6px_rgba(52,211,153,0.5)]"
+          style={{ width: `${progressPercent}%` }}
         />
       </div>
     </div>
@@ -73,9 +95,27 @@ export const TaskRow: React.FC<TaskRowProps> = ({ task, index }) => {
         }
       : undefined;
 
+  const renderSkipReason = () => {
+    switch (task.skipReason) {
+      case "strategy_skip":
+        return t("skipReasonStrategy");
+      case "user_skip":
+        return t("skipReasonUser");
+      case "user_cancel":
+        return t("skipReasonCancel");
+      case "conflict_timeout":
+        return t("skipReasonTimeout");
+      case "no_gain":
+        return t("skipReasonNoGain");
+      default:
+        return task.skipReason || t("skipped");
+    }
+  };
+
   return (
     <div
       style={staggerStyle}
+      role="listitem"
       className={`group relative flex items-center justify-between h-[56px] px-3 border-b border-[var(--border-subtle)] transition-colors duration-150 ${
         isFlashing
           ? "bg-[var(--flash-success)]"
@@ -86,9 +126,9 @@ export const TaskRow: React.FC<TaskRowProps> = ({ task, index }) => {
       <div className="flex items-center gap-3 min-w-0 flex-1">
         {/* 40x40 縮圖 */}
         <div className="relative flex-shrink-0 w-10 h-10 rounded-[4px] overflow-hidden bg-[var(--bg-subtle)] border border-[var(--border-subtle)] flex items-center justify-center">
-          {task.hasThumbnail && !thumbError ? (
+          {(task.thumbnailUrl || task.hasThumbnail) && !thumbError ? (
             <img
-              src={`tinysqueeze-thumb://localhost/${task.id}`}
+              src={task.thumbnailUrl || `tinysqueeze-thumb://localhost/${task.id}`}
               alt={task.fileName}
               className="w-full h-full object-cover"
               loading="lazy"
@@ -135,6 +175,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({ task, index }) => {
             <div className="flex items-center gap-1">
               <button
                 type="button"
+                aria-label={t("conflictOverwrite")}
                 onClick={() => resolveConflict(task.id, "overwrite")}
                 className="px-1.5 py-0.5 text-[12px] font-medium bg-[var(--accent-amber)] text-black rounded hover:opacity-90 transition-opacity cursor-pointer"
               >
@@ -142,6 +183,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({ task, index }) => {
               </button>
               <button
                 type="button"
+                aria-label={t("conflictRename")}
                 onClick={() => resolveConflict(task.id, "auto_rename")}
                 className="px-1.5 py-0.5 text-[12px] font-medium bg-[var(--bg-surface)] text-[var(--text-main)] border border-[var(--border-subtle)] rounded hover:bg-[var(--border-subtle)] transition-colors cursor-pointer"
               >
@@ -149,12 +191,22 @@ export const TaskRow: React.FC<TaskRowProps> = ({ task, index }) => {
               </button>
               <button
                 type="button"
+                aria-label={t("conflictSkip")}
                 onClick={() => resolveConflict(task.id, "skip")}
                 className="px-1.5 py-0.5 text-[12px] font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
               >
                 {t("conflictSkip")}
               </button>
             </div>
+          </div>
+        ) : task.status === "skipped" ? (
+          <div className="flex items-center gap-2 px-2 py-1 rounded-[4px] bg-[var(--bg-subtle)] border border-[var(--border-subtle)]">
+            <span className="text-[12px] font-mono font-medium text-[var(--text-muted)]">
+              {t("skipped")}
+            </span>
+            <span className="text-[11px] text-[var(--text-dim)]">
+              ({renderSkipReason()})
+            </span>
           </div>
         ) : task.status === "error" ? (
           <span className="text-[13px] text-[var(--accent-red)] font-medium">
@@ -170,7 +222,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({ task, index }) => {
               />
             </div>
 
-            {/* 壓縮率標記或進度條 */}
+            {/* 壓縮率標記或真實階段進度條 */}
             <div className="w-[100px] text-center flex items-center justify-center">
               {task.status === "completed" && (
                 task.isKeptOriginal ? (
@@ -184,19 +236,20 @@ export const TaskRow: React.FC<TaskRowProps> = ({ task, index }) => {
                 )
               )}
 
-              {task.status === "processing" && <TaskProgressBar />}
+              {task.status === "processing" && <TaskProgressBar stage={task.stage} />}
             </div>
           </>
         )}
       </div>
 
-      {/* 右側：動作按鈕（懸停浮現） */}
+      {/* 右側：動作按鈕（懸停或獲得焦點時浮現） */}
       <div className="flex items-center justify-center w-[100px] flex-shrink-0">
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center gap-1">
+        <div className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150 flex items-center justify-center gap-1">
           {task.status === "processing" ? (
             <button
               type="button"
               onClick={() => removeTask(task.id)}
+              aria-label={t("actionRemoveProcessing")}
               title={t("actionRemoveProcessing")}
               className="p-1.5 text-[var(--text-muted)] hover:text-[var(--accent-amber)] hover:bg-[var(--bg-surface)] rounded-[3px] transition-colors cursor-pointer"
             >
@@ -204,10 +257,11 @@ export const TaskRow: React.FC<TaskRowProps> = ({ task, index }) => {
             </button>
           ) : (
             <>
-              {task.status === "completed" && (
+              {(task.status === "completed" || (task.status === "skipped" && task.outputPath)) && (
                 <button
                   type="button"
                   onClick={handleOpenFolder}
+                  aria-label={t("actionOpenFolder")}
                   title={t("actionOpenFolder")}
                   className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface)] rounded-[3px] transition-colors cursor-pointer"
                 >
@@ -217,6 +271,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({ task, index }) => {
               <button
                 type="button"
                 onClick={() => removeTask(task.id)}
+                aria-label={t("actionRemove")}
                 title={t("actionRemove")}
                 className="p-1.5 text-[var(--text-muted)] hover:text-[var(--accent-red)] hover:bg-[var(--bg-surface)] rounded-[3px] transition-colors cursor-pointer"
               >

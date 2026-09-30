@@ -1,4 +1,9 @@
+use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
+
+fn default_suffix() -> String {
+    "_min".into()
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CompressionConfig {
@@ -9,6 +14,8 @@ pub struct CompressionConfig {
     pub conflict_strategy: String, // "auto_rename" | "overwrite" | "skip" | "ask"
     pub strip_metadata: bool,
     pub convert_to_srgb: bool,
+    #[serde(default = "default_suffix")]
+    pub suffix: String,            // 檔名後綴，預設 "_min"
 }
 
 impl Default for CompressionConfig {
@@ -21,6 +28,7 @@ impl Default for CompressionConfig {
             conflict_strategy: "auto_rename".into(),
             strip_metadata: true,
             convert_to_srgb: true,
+            suffix: "_min".into(),
         }
     }
 }
@@ -31,6 +39,18 @@ pub struct TaskInput {
     pub file_path: String, // 本機檔案絕對路徑
     pub file_name: String, // 檔名
     pub file_size: u64,    // 原始檔案大小
+    #[serde(default)]
+    pub prior_output_path: Option<String>, // 上一輪輸出路徑 (供 R 重跑覆寫判斷)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OutputPlan {
+    pub target_dir: PathBuf,
+    pub candidate_output_path: PathBuf,
+    pub final_filename: String,
+    pub is_conflict: bool,
+    pub is_skipped: bool,
+    pub skip_reason: Option<String>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -38,12 +58,19 @@ pub struct BatchInitAck {
     pub task_count: usize,
 }
 
-// 縮圖就緒極簡通知 (Slim Payload，約 40 Bytes)
+// 縮圖就緒極簡通知 (Slim Payload，約 40 Bytes，含極輕量 80x80 DataURL)
 #[derive(Debug, Serialize, Clone)]
 pub struct ThumbnailReadyPayload {
     pub id: String,
     pub width: u32,
     pub height: u32,
+    pub thumbnail_base64: Option<String>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct TaskStagePayload {
+    pub id: String,
+    pub stage: String, // "decoding" | "encoding" | "writing"
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -55,6 +82,13 @@ pub struct TaskCompletedPayload {
     pub output_path: String,
     pub output_format: String,  // "WEBP", "JPG", "PNG", "AVIF"
     pub is_kept_original: bool, // 是否發生反向膨脹而保留原檔
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct TaskSkippedPayload {
+    pub id: String,
+    pub reason: String, // "strategy_skip" | "conflict_timeout" | "user_skip" | "no_gain"
+    pub output_path: Option<String>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -86,3 +120,4 @@ pub enum ConflictResolution {
     AutoRename,
     Skip,
 }
+

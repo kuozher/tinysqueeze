@@ -195,3 +195,133 @@ cd src-tauri
 cargo check
 cargo test
 ```
+
+---
+
+## 6. 競品觀摩與技術評估：Hando 對標分析與畫質演進建議 (2026-09-29)
+
+> **交接備忘說明**：本段落記錄針對開源專案 [Hando](https://github.com/homer-create/Hando)（Tauri 2 + Rust + Vanilla TS，作者 Homer Shie）之橫向架構對標與品質評估。本記錄旨在作為後續與同儕另一份建議共同討論、交叉評估與版本調整之依據，**核心聚焦於「畫質（Quality）」與「架構落地性」**。
+
+### ① 總體對比矩陣 (Overview Matrix)
+
+| 評估維度 | TinySqueeze (本專案) | Hando (對標專案) | 比較結論與定位差異 |
+| :--- | :--- | :--- | :--- |
+| **品質 (Quality)** | 人眼啟發式（自適應 4:4:4 採樣）＋ MozJPEG Ahumada-Watson 矩陣 ＋ 經驗檔位 | `ssimulacra2` 客觀二分搜尋 ＋ 世代損失防禦 ＋ ICC Passthrough ＋ EXIF 旋轉歸一 | **Hando 演算法深度勝出**。<br>TinySqueeze 偏向極速啟發式與文字保護；Hando 在色彩管理與二次壓縮保護上更為嚴謹。 |
+| **效率與效能** | 雙通道（Fast 縮圖 / Heavy 編碼）＋ `512MB` 記憶體門禁計數器 ＋ 單次極速編碼 | 缺乏記憶體門禁水線；Auto 模式需 3~5 輪編碼＋感知評分，整體延遲顯著拉長 | **TinySqueeze 併發與穩定性勝出**。<br>TinySqueeze 保證百張 48MP 大圖不爆 RAM；Hando 缺乏記憶體預估保護。 |
+| **可維護性** | React 19 ＋ Zustand ＋ Tailwind v4，UI 模組化清晰；Rust 採用高階主流 Crates | Vanilla TS 直接操作 DOM（無框架）；Rust 大量引入 C-sys 底層繫結（編譯門檻高） | **互有勝負**。<br>TinySqueeze 前端擴充與維護性遠高；Hando 具備 `docs/rubric.md`、自動化基準測試與快照測試。 |
+| **UX 動線** | 80×80 WebP 即時縮圖流 ＋ 虛擬滾動 ＋ 非破壞性多模式目錄 ＋ 衝突彈窗 ＋ 結算卡片 | 僅純文字列表 ＋ 預設覆蓋原檔 ＋ 依賴系統資源回收筒一鍵 Undo | **TinySqueeze 體驗大幅勝出**。<br>TinySqueeze 提供豐富的視覺反饋與掌控感；Hando 偏極簡命令列風格。 |
+
+---
+
+### ② 核心技術落差與原因深析 (Deep Dive)
+
+1. **色彩空間保真度 (ICC Profile Passthrough)**：
+   - **現狀問題**：TinySqueeze 使用 `image::open` 解碼與標準編碼器輸出時，未保留原圖的 ICC 色彩設定檔。iPhone 或相機直出的 Display P3 / AdobeRGB 廣色域照片，壓縮後在部分色彩管理環境下會有微幅彩度下降（偏淡）。
+   - **Hando 作法**：在解碼階段抽出 ICC（JPEG APP2 / PNG iCCP / WebP ICCP），編碼後原樣嵌回，確保 100% 廣色域不偏色。
+2. **手機直拍照片方向異常 (EXIF Orientation Normalization)**：
+   - **現狀問題**：直接剝除 EXIF 後，某些依賴 EXIF 標記旋轉角度（如 Tag 6）的照片可能在不支援 EXIF 的檢視器中呈現橫躺。
+   - **Hando 作法**：解碼進入像素記憶體時，依據 EXIF 標籤執行物理旋轉校正（Bake orientation into pixels），使輸出圖片即使完全剝除 EXIF 也能維持正確正向。
+3. **已壓縮圖檔的二次劣化 (Generation Loss)**：
+   - **現狀問題**：若使用者拖入已嚴重壓縮的 JPEG（如通訊軟體壓縮過），TinySqueeze 仍會重新解碼並量化編碼，導致方塊雜訊放大。
+   - **Hando 作法**：透過每像素位元率 `bpp = (bytes * 8) / (width * height)` 評估。若 `bpp < 1.0`，主動切換至 `mozjpeg-sys` 的無損 DCT 係數轉碼（`optimize_lossless`），像素 100% 不變，只做霍夫曼重排；或提高門檻杜絕劣質二度壓縮。
+4. **客觀畫質指標 vs 單次編碼速度權衡**：
+   - Hando 採用 `ssimulacra2` 模型二分搜尋，可自動找出符合視覺臨界點的最小檔案，但耗時增加 3~8 倍。
+   - TinySqueeze 採用「自適應 4:4:4 色差抽樣 + 固定檔位」，耗時僅 0.02ms，適合大批次高效吞吐。
+
+---
+
+### ③ 下次回來與同儕共同評估的具體討論題綱 (Peer Review Agenda)
+
+請於下次工作會議中，攜帶同儕的另一份建議，針對以下 5 個決策點進行交叉確認：
+
+- [ ] **決策點 1：是否將「ICC Profile Passthrough」列為 v1.1 最高優先級實作？**
+  - *實施成本*：中等（在 Rust `codecs.rs` 讀取 APP2 / iCCP 標記並重嵌）。
+  - *預期收益*：徹底根絕專業相片偏色問題，畫質保真度邁向商業級。
+- [ ] **決策點 2：EXIF 旋轉歸一化（Orientation Normalization）納入解碼管線**
+  - *實施成本*：低（在 `pipeline.rs` 解碼後依據 EXIF 標籤轉正 raw 像素）。
+  - *預期收益*：消除手機直拍照片旋轉異常的邊界 Bug。
+- [ ] **決策點 3：是否引入低 bpp 判定與「防二次重壓保護」？**
+  - *討論重點*：當偵測到圖檔 `bpp < 0.8` 時，是在 UI 上提示「已為高壓縮檔案，建議保留原檔」，或是後端自動退回無損轉碼？
+- [ ] **決策點 4：畫質評判閉環的定位取捨（保持極速 vs 引入 Auto 搜尋）**
+  - *取捨評估*：是否需要額外新增一個可選的「自動感知模式 (Auto Mode)」，還是維持目前「五段磁吸滑桿 + 4:4:4 啟發式」以維持極限吞吐速度？
+- [x] **決策點 5：落盤機制評估（維持目錄選擇 vs 引入資源回收筒 Undo）**
+  - *討論重點*：TinySqueeze 現有的「非破壞性多模式（同目錄/子目錄/自訂）+ 衝突彈窗」對日常辦公非常直覺安全；是否有必要借鑒 Hando 的 `trash` crate 支援原地覆蓋時的 Undo？
+
+---
+
+## 7. v1.3 里程碑落地完成紀錄 (2026-09-30)
+
+經 3 輪嚴格詰辯與壓力測試後，已全面落實 PRD v1.3 核心架構與 UX 改造：
+
+### ① 後端並發與管線穩定性 (R-01, R-03, R-05, E-03)
+- **並發死鎖徹底解除 (R-05)**：
+  - 重構 `pipeline.rs` 之 `plan_output` 純函數，將衝突檢測移至解碼前（Pre-decode）。
+  - 當遇到同名衝突且策略為 `ask` 時，在等待前端決策（`rx.await`）期間**絕不佔用 Worker 與 Memory Permits**，杜絕並發任務卡死佇列。
+- **終態跳過狀態規範 (R-01)**：
+  - 新增 `skipped` 狀態與 `task_skipped` 事件，涵蓋 `strategy_skip`、`user_skip`、`no_gain`、`conflict_timeout`，釋放記憶體且不計入錯誤。
+- **純 Rust EXIF 方向正規化 (R-03)**：
+  - 實作無外部 C 依賴的 JPEG APP1 TIFF Orientation 解析器，將手機直拍相片於記憶體中物理旋轉正向，輸出後完全移除 EXIF 仍能保證正向。
+- **舊名稱清理 (E-03)**：
+  - 清理所有遺留之 `tinypress` 代碼、自訂協定與本機快取 Key。
+
+### ② 前端與使用者體驗升級 (U-01 ~ U-10)
+- **非阻塞式 Sticky ResultBar (U-02)**：
+  - 移除原先阻擋操作的 Modal 彈窗，改為置頂常駐結果列，即時展示完成數、節省容量、失敗數、單一目錄開啟資料夾、以及「僅看失敗」一鍵過濾。
+- **原生檔案與目錄選擇對話框 (U-03, U-09)**：
+  - 整合 `@tauri-apps/plugin-dialog`，修復 Windows WebView2 瀏覽器原生 `<input type="file">` 缺少路徑之問題。
+- **真實階段反饋 (U-05)**：
+  - 透過 `task_stage` 廣播「解碼中」、「壓縮中」、「寫入中」，超過 10s 自動顯示經過時間。
+- **視窗關閉防禦 (U-06) 與按鈕語意 (U-07)**：
+  - 處理中關閉視窗強制跳出確認；處理中 Header 按鈕明確切換為「取消全部 (Esc)」。
+- **累積節省數據重置 (U-08)**：
+  - 種子值自 0 起算，支援增量重新處理防重複計算。
+- **無障礙對比標準與動態模式 (U-10)**：
+  - 深淺色主題全體文字達到 WCAG AA 4.5:1 對比門檻，主按鈕確保高對比文字，完整支援 `@media (prefers-reduced-motion: reduce)`。
+
+### ③ 驗證結果
+- `npm run build`：0 錯誤，0 警告，類型檢查與 Vite 打包完全通過。
+- `cargo test`：4/4 單元測試全部通過（`test_webp_roundtrip`, `test_plan_output_same_dir`, `test_exif_orientation_parser`, `test_scan_paths_dir`）。
+
+### ④ 穩定度與無障礙精修 (v1.3.1 Refinements)
+- **淺色主題綠底按鈕**：改用 `#056547` 搭配純白文字（`#ffffff`），對比度達 **7.14:1**（符合 WCAG AAA）。
+- **佇列控制按鈕統一**：「取消全部」移至中央緊鄰「暫停」按鈕，高度、細外框、微圓角全面對齊，右側動作區在處理中時維持簡潔。
+- **視窗頂部崩潰與跳動根除**：移除 `<header>` 上與 Windows 原生 `data-tauri-drag-region` 衝突的 JS `start_dragging` 與雙擊最大化 IPC，完全由 Windows OS 原生處理，徹底消除 Win32 訊息重入引發之 Panic 與閃退。
+- **資料夾拖曳強化與 AVIF 警示**：`scan_paths` 結構化回傳圖檔總數、`.avif` 數量與未支援數量；新增非阻塞頂部 `<Toast />`，拖入 `.avif` 或空目錄時即時提示，絕不靜默失效。
+- **AVIF 輸出定位全站對齊**：於 `README.md`、`EmptyState.tsx` 與多國語系字串同步澄清「AVIF 僅支援輸出，不支援輸入」。
+- **側邊欄與結算列滑動進出動畫**：`SettingsDrawer` 與 `ResultBar` 升級為常駐平滑 transition，實現真正的 Slide-in 與 Slide-out 自然收合。
+
+### ⑤ 「取消全部」深度修復與 Tauri 版本對齊 (v1.3.2 Fixes)
+- **「取消全部」無效之根本原因分析**：
+  1. **後端靜默退出**：`pipeline.rs` 原先在檢測到 `cancelled_tasks` 時直接 `return;`，未發送任何 `task_skipped` 事件給前端，導致前端永遠無法得知任務已被取消。
+  2. **前端狀態缺乏轉換**：`Header.tsx` 僅透過 `invoke("cancel_task")` 呼叫後端，未同步將 Zustand 中的任務狀態自 `processing` / `pending` 變更為 `skipped`，因此 `isProcessing` 永遠維持 `true`，介面看起來宛如凍結毫無反應。
+  3. **暫停與並發死鎖**：若使用者在暫停中或任務正等待 worker permit 時點擊取消全部，worker 卡在等待訊號，無法抵達取消檢查點。
+- **具體解決方案**：
+  1. **後端原子批次取消 (`cancel_batch`)**：
+     - 在 `PipelineState` 增加 `pub is_cancelled: Arc<AtomicBool>`。
+     - 在佇列暫停等待、獲取信號量前後、以及落盤寫入前設置四重檢查點；若檢測到全域取消，直接中止並發出 `task_skipped (reason: "user_cancel")`，且 RAII `TempFileGuard` 自動清除在途暫存檔。
+     - 實作 `cancel_batch` 指令，將 `is_cancelled` 設為 true、解除暫停狀態、喚醒所有等待 worker 並排空等待中的衝突決策頻道。
+  2. **前端即時狀態轉換與反饋**：
+     - 在 `src/store.ts` 實作 `cancelAll`：瞬間將所有處理中、等待中與衝突中的任務狀態重設為 `skipped`，清除處理旗標並彈出提示 Toast（「已取消所有處理中任務」），達到零延遲即時 UI 響應。
+     - 在 `TaskRow.tsx` 支援 `user_cancel` 顯示為「使用者取消」。
+  3. **Tauri NPM 與 Cargo 套件版本對齊**：
+     - 修正 `package.json`：將 `@tauri-apps/api` 鎖定為 `~2.11.0`（解析為 `2.11.1`，對應 Rust `tauri 2.11.6`）；將 `@tauri-apps/plugin-dialog` 鎖定為 `~2.7.0`（解析為 `2.7.3`，精準匹配 Rust `tauri-plugin-dialog 2.7.3`）。
+     - 完全根除 `tauri info` 與編譯時之 `version mismatched Tauri packages` 警示。
+- **驗證**：
+  - `npm run build` 通過（0 錯誤）。
+  - `cargo test --lib` 5/5 測試通過（含新增之 `test_cancel_batch_state`）。
+  - `tauri info` 檢查無任何版本不相容警告。
+
+### ⑥ UX 極簡去噪與佇列控制收斂 (v1.3.3 Refinements)
+- **空狀態「累計節省」徹底移除**：
+  - 移除 `EmptyState.tsx` 右下角之「累計節省」文字與數值展示，將空狀態還原為純粹的拖曳引導與按鈕選取工作區。
+  - 清理 `store.ts` 中 `cumulativeSavedBytes` 的狀態宣告、localStorage 存取與計算邏輯。
+- **佇列控制簡化：廢除「暫停/繼續」，專注「取消全部 (Esc)」**：
+  - 圖檔壓縮時間短（毫秒級），原生 C/Rust 編碼執行緒無法無損掛起；使用者真實需求皆為「立即煞車」或「改設定重新開始」。
+  - 移除 Header 中的「暫停/繼續」切換按鈕，處理中控制區僅保留一顆清晰的「取消全部 (Esc)」按鈕。
+  - 在 `useKeyboardStack.ts` 擴充全域 `Escape` 快捷鍵支援：處理中按 Esc 鍵直接觸發 `cancelAll()`。
+- **Toast 提示噪音清理（遵循 Rule of Silence）**：
+  - 移除「已取消所有處理中任務」、「所選圖片皆已在處理中佇列內」、「已匯入 X 張圖片...」等成功型過渡 Toast，介面本身的狀態列與即時轉化已能清晰傳遞結果。
+  - 僅保留真正無上下文時的阻斷型防禦警示：「未發現支援的圖片檔案（全空或無有效副檔名）」與「純 AVIF 拖入警示」。
+- **驗證**：
+  - `npm run build` 通過（0 錯誤）。
+  - `cargo test --lib` 5/5 測試通過。

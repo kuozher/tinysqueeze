@@ -9,6 +9,12 @@ import {
 } from "./types";
 import { Locale, getTranslation, TranslationKey } from "./i18n";
 
+export interface ToastMessage {
+  id: string;
+  message: string;
+  type: "info" | "warning" | "error";
+}
+
 export interface TinySqueezeState {
   taskIds: string[];
   tasks: Record<string, TaskItem>;
@@ -17,26 +23,31 @@ export interface TinySqueezeState {
   isSettingsOpen: boolean;
   summaryModalData: BatchFinishedPayload | null;
   isDraggingOver: boolean;
-  cumulativeSavedBytes: number;
   hasShownSummaryModal: boolean;
   locale: Locale;
+  toast: ToastMessage | null;
 
   // Actions
   addTasks: (newTasks: TaskItem[]) => void;
-  setThumbnailReady: (id: string, width: number, height: number) => void;
+  setThumbnailReady: (id: string, width: number, height: number, thumbnailBase64?: string) => void;
   setTaskCompleted: (payload: TaskCompletedPayload) => void;
+  setTaskSkipped: (payload: { id: string; reason: string; output_path?: string }) => void;
+  setTaskStage: (payload: { id: string; stage: "decoding" | "encoding" | "writing" }) => void;
   setTaskError: (id: string, error: string) => void;
   setConflict: (id: string, candidatePath: string) => void;
   resolveConflict: (id: string, resolution: "overwrite" | "auto_rename" | "skip") => Promise<void>;
   updateConfig: (partial: Partial<CompressionConfig>) => void;
   isPaused: boolean;
   setIsPaused: (paused: boolean) => Promise<void>;
+  cancelAll: () => Promise<void>;
   clearList: () => Promise<void>;
   removeTask: (id: string) => Promise<void>;
   setSummaryModal: (data: BatchFinishedPayload | null) => void;
   checkAndTriggerSummaryModal: () => void;
   setSettingsOpen: (open: boolean) => void;
   setDraggingOver: (over: boolean) => void;
+  showToast: (message: string, type?: "info" | "warning" | "error") => void;
+  dismissToast: () => void;
   reprocessAll: () => Promise<void>;
   setLocale: (locale: Locale) => void;
   t: (key: TranslationKey) => string;
@@ -51,16 +62,10 @@ const DEFAULT_CONFIG: CompressionConfig = {
   conflict_strategy: "auto_rename",
   strip_metadata: true,
   convert_to_srgb: true,
+  suffix: "_min",
 };
 
-function getMigratedItem(newKey: string, legacyKey: string): string | null {
-  return localStorage.getItem(newKey) ?? localStorage.getItem(legacyKey);
-}
-
-const SAVED_BYTES_KEY = "tinysqueeze_cumulative_saved_bytes";
-const LEGACY_SAVED_BYTES_KEY = "tinypress_cumulative_saved_bytes";
 const LOCALE_KEY = "tinysqueeze_locale";
-const LEGACY_LOCALE_KEY = "tinypress_locale";
 
 export const useStore = create<TinySqueezeState>((set, get) => ({
   taskIds: [],
@@ -72,8 +77,8 @@ export const useStore = create<TinySqueezeState>((set, get) => ({
   isDraggingOver: false,
   hasShownSummaryModal: false,
   isPaused: false,
-  locale: (getMigratedItem(LOCALE_KEY, LEGACY_LOCALE_KEY) as Locale) || "zh-TW",
-  cumulativeSavedBytes: Number(getMigratedItem(SAVED_BYTES_KEY, LEGACY_SAVED_BYTES_KEY) || "1488977920"), // 預設約 1.38 GB
+  locale: (localStorage.getItem(LOCALE_KEY) as Locale) || "zh-TW",
+  toast: null,
 
   setLocale: (locale: Locale) => {
     localStorage.setItem(LOCALE_KEY, locale);
@@ -106,7 +111,7 @@ export const useStore = create<TinySqueezeState>((set, get) => ({
     });
   },
 
-  setThumbnailReady: (id, width, height) => {
+  setThumbnailReady: (id, width, height, thumbnailBase64) => {
     set((state) => {
       const task = state.tasks[id];
       if (!task) return state;
@@ -118,6 +123,7 @@ export const useStore = create<TinySqueezeState>((set, get) => ({
             width,
             height,
             hasThumbnail: true,
+            thumbnailUrl: thumbnailBase64 || task.thumbnailUrl || `tinysqueeze-thumb://localhost/${id}`,
           },
         },
       };
@@ -133,11 +139,7 @@ export const useStore = create<TinySqueezeState>((set, get) => ({
         ? payload.original_size - payload.compressed_size
         : 0;
 
-      const newCumulative = state.cumulativeSavedBytes + savedThisTask;
-      localStorage.setItem(SAVED_BYTES_KEY, newCumulative.toString());
-
       return {
-        cumulativeSavedBytes: newCumulative,
         tasks: {
           ...state.tasks,
           [payload.id]: {
@@ -148,15 +150,54 @@ export const useStore = create<TinySqueezeState>((set, get) => ({
             outputPath: payload.output_path,
             outputFormat: payload.output_format,
             isKeptOriginal: payload.is_kept_original,
+            priorSavedBytes: savedThisTask,
           },
         },
       };
     });
 
-    // 檢查佇列是否「全數項目皆已完成」，若是則優雅彈窗
+    // 檢查佇列是否「全數項目皆已脫離 processing 與 conflict」，若是則優雅結算
     setTimeout(() => {
       get().checkAndTriggerSummaryModal();
     }, 250);
+  },
+
+  setTaskSkipped: (payload) => {
+    set((state) => {
+      const task = state.tasks[payload.id];
+      if (!task) return state;
+      return {
+        tasks: {
+          ...state.tasks,
+          [payload.id]: {
+            ...task,
+            status: "skipped",
+            skipReason: payload.reason,
+            outputPath: payload.output_path || task.outputPath,
+          },
+        },
+      };
+    });
+
+    setTimeout(() => {
+      get().checkAndTriggerSummaryModal();
+    }, 250);
+  },
+
+  setTaskStage: (payload) => {
+    set((state) => {
+      const task = state.tasks[payload.id];
+      if (!task) return state;
+      return {
+        tasks: {
+          ...state.tasks,
+          [payload.id]: {
+            ...task,
+            stage: payload.stage,
+          },
+        },
+      };
+    });
   },
 
   setTaskError: (id, error) => {
@@ -216,7 +257,8 @@ export const useStore = create<TinySqueezeState>((set, get) => ({
           ...state.tasks,
           [id]: {
             ...task,
-            status: resolution === "skip" ? "completed" : "processing",
+            status: resolution === "skip" ? "skipped" : "processing",
+            skipReason: resolution === "skip" ? "user_skip" : undefined,
           },
         },
       };
@@ -253,6 +295,38 @@ export const useStore = create<TinySqueezeState>((set, get) => ({
         }
       } catch (e) {
         console.error("Pause/resume batch failed:", e);
+      }
+    }
+  },
+
+  cancelAll: async () => {
+    const state = get();
+    const nextTasks = { ...state.tasks };
+    let cancelledCount = 0;
+
+    for (const id of state.taskIds) {
+      const t = nextTasks[id];
+      if (t && (t.status === "processing" || t.status === "pending" || t.status === "conflict")) {
+        nextTasks[id] = {
+          ...t,
+          status: "skipped",
+          skipReason: "user_cancel",
+        };
+        cancelledCount++;
+      }
+    }
+
+    set({
+      tasks: nextTasks,
+      isPaused: false,
+      hasShownSummaryModal: false,
+    });
+
+    if (isTauri()) {
+      try {
+        await invoke("cancel_batch");
+      } catch (err) {
+        console.error("Failed to cancel batch:", err);
       }
     }
   },
@@ -350,6 +424,15 @@ export const useStore = create<TinySqueezeState>((set, get) => ({
     set({ isDraggingOver: over });
   },
 
+  showToast: (message, type = "info") => {
+    const id = Math.random().toString(36).substring(2, 9);
+    set({ toast: { id, message, type } });
+  },
+
+  dismissToast: () => {
+    set({ toast: null });
+  },
+
   reprocessAll: async () => {
     const state = get();
     const tasksToRun = state.taskIds.map((id) => {
@@ -359,6 +442,7 @@ export const useStore = create<TinySqueezeState>((set, get) => ({
         file_path: t.filePath,
         file_name: t.fileName,
         file_size: t.fileSize,
+        prior_output_path: t.outputPath,
       };
     });
 

@@ -312,10 +312,43 @@ pub fn get_encoder(
     }
 }
 
+const BASE64_ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+/// 高效零依賴 Base64 編碼器（專供縮圖 DataURL）
+pub fn to_base64(data: &[u8]) -> String {
+    let mut out = String::with_capacity((data.len() + 2) / 3 * 4);
+    for chunk in data.chunks(3) {
+        let b0 = chunk[0] as u32;
+        let b1 = chunk.get(1).copied().unwrap_or(0) as u32;
+        let b2 = chunk.get(2).copied().unwrap_or(0) as u32;
+        let triple = (b0 << 16) | (b1 << 8) | b2;
+        out.push(BASE64_ALPHABET[((triple >> 18) & 0x3F) as usize] as char);
+        out.push(BASE64_ALPHABET[((triple >> 12) & 0x3F) as usize] as char);
+        if chunk.len() > 1 {
+            out.push(BASE64_ALPHABET[((triple >> 6) & 0x3F) as usize] as char);
+        } else {
+            out.push('=');
+        }
+        if chunk.len() > 2 {
+            out.push(BASE64_ALPHABET[(triple & 0x3F) as usize] as char);
+        } else {
+            out.push('=');
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use image::RgbaImage;
+
+    #[test]
+    fn test_to_base64() {
+        assert_eq!(to_base64(b"Hello"), "SGVsbG8=");
+        assert_eq!(to_base64(b""), "");
+        assert_eq!(to_base64(b"Rust"), "UnVzdA==");
+    }
 
     #[test]
     fn test_webp_roundtrip() {

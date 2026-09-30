@@ -5,7 +5,7 @@ export const translations = {
     // App
     appName: "TinySqueeze",
     dragOverlayTitle: "釋放滑鼠以加入圖片佇列",
-    dragOverlaySubtitle: "支援 JPG、PNG、WebP、AVIF，將自動啟動壓縮",
+    dragOverlaySubtitle: "支援 JPG、PNG、WebP，將自動啟動壓縮（AVIF 僅支援輸出）",
 
     // Header
     queuePaused: "佇列已暫停",
@@ -17,7 +17,12 @@ export const translations = {
     restartKey: " (R)",
     restartTooltip: "快捷列參數已變更，按 R 鍵以新設定重新開始全部",
     clear: "清除",
-    clearKey: " (C)",
+    cancelAll: "取消全部",
+    cancelAllSuccess: "已取消所有處理中任務",
+    clearList: "清除清單",
+    addFiles: "選取檔案",
+    addFolder: "選取資料夾",
+    browse: "瀏覽...",
     settings: "偏好設定",
     settingsKey: " (,)",
     minimize: "最小化",
@@ -52,10 +57,20 @@ export const translations = {
     actionRemove: "從清單移除",
     taskFailed: "處理失敗",
     processingEllipsis: "處理中...",
+    skipped: "已略過",
+    skipReasonStrategy: "同名檔案已存在",
+    skipReasonUser: "使用者跳過",
+    skipReasonCancel: "使用者取消",
+    skipReasonTimeout: "決策逾時",
+    skipReasonNoGain: "已是最佳體積",
+    stageDecoding: "解碼中",
+    stageEncoding: "壓縮中",
+    stageWriting: "寫入中",
+    stageWaiting: "等待中",
 
     // EmptyState
     dropPromptTitle: "拖放圖片或資料夾至此",
-    dropPromptFormats: "支援 PNG、JPG、JPEG、WebP、AVIF",
+    dropPromptFormats: "支援 PNG、JPG、JPEG、WebP（AVIF 僅支援輸出）",
 
     // SettingsDrawer
     prefTitle: "偏好設定",
@@ -89,12 +104,34 @@ export const translations = {
     summarySavedBytes: "節省容量",
     openOutputFolder: "開啟輸出資料夾",
     closeBtn: "關閉",
+
+    // ResultBar
+    resultCompleted: "已完成",
+    resultImagesUnit: "張",
+    resultSaved: "節省",
+    resultSkipped: "略過",
+    resultFailed: "失敗",
+    resultFoldersCount: "輸出於",
+    resultFoldersUnit: "個資料夾",
+    resultShowAll: "顯示全部",
+    resultShowFailedOnly: "僅看失敗",
+    resultOpenFolder: "開啟資料夾",
+    resultDismiss: "關閉結果通知",
+
+    // System Alerts & Dialogs
+    warnAvifInput: "TinySqueeze 目前僅支援輸出 AVIF，暫不支援作為來源圖檔輸入。",
+    warnUnsupportedFiles: "未發現支援的圖片檔案（支援 JPG、PNG、WebP）。",
+    errReadFailed: "讀取失敗:",
+    confirmCloseProcessing: "仍有圖片正在處理中，離開將會中止任務並清除暫存檔。確定要關閉嗎？",
+    noFailedTasks: "沒有失敗的任務",
+    customSuffixLabel: "檔名後綴 (預設 _min)",
+    closeAlert: "關閉提示",
   },
   "en-US": {
     // App
     appName: "TinySqueeze",
     dragOverlayTitle: "Release to add images to queue",
-    dragOverlaySubtitle: "Supports JPG, PNG, WebP, AVIF. Compression starts automatically",
+    dragOverlaySubtitle: "Supports JPG, PNG, WebP (AVIF output only). Compression starts automatically",
 
     // Header
     queuePaused: "Queue Paused",
@@ -107,6 +144,12 @@ export const translations = {
     restartTooltip: "Settings changed. Press R to restart with new settings",
     clear: "Clear",
     clearKey: " (C)",
+    cancelAll: "Cancel All",
+    cancelAllSuccess: "All processing tasks cancelled",
+    clearList: "Clear List",
+    addFiles: "Select Files",
+    addFolder: "Select Folder",
+    browse: "Browse...",
     settings: "Settings",
     settingsKey: " (,)",
     minimize: "Minimize",
@@ -141,10 +184,20 @@ export const translations = {
     actionRemove: "Remove from list",
     taskFailed: "Failed",
     processingEllipsis: "Processing...",
+    skipped: "Skipped",
+    skipReasonStrategy: "File already exists",
+    skipReasonUser: "Skipped by user",
+    skipReasonCancel: "Cancelled by user",
+    skipReasonTimeout: "Decision timed out",
+    skipReasonNoGain: "Already optimized",
+    stageDecoding: "Decoding",
+    stageEncoding: "Encoding",
+    stageWriting: "Writing",
+    stageWaiting: "Waiting",
 
     // EmptyState
     dropPromptTitle: "Drop images or folders here",
-    dropPromptFormats: "Supports PNG, JPG, JPEG, WebP, AVIF",
+    dropPromptFormats: "Supports PNG, JPG, JPEG, WebP (AVIF output only)",
 
     // SettingsDrawer
     prefTitle: "Preferences",
@@ -178,6 +231,28 @@ export const translations = {
     summarySavedBytes: "Space Saved",
     openOutputFolder: "Open Output Folder",
     closeBtn: "Close",
+
+    // ResultBar
+    resultCompleted: "Completed",
+    resultImagesUnit: "items",
+    resultSaved: "Saved",
+    resultSkipped: "skipped",
+    resultFailed: "failed",
+    resultFoldersCount: "Saved in",
+    resultFoldersUnit: "folders",
+    resultShowAll: "Show All",
+    resultShowFailedOnly: "Failed Only",
+    resultOpenFolder: "Open Folder",
+    resultDismiss: "Dismiss notification",
+
+    // System Alerts & Dialogs
+    warnAvifInput: "TinySqueeze currently supports AVIF output only, not as an input format.",
+    warnUnsupportedFiles: "No supported image files found (supports JPG, PNG, WebP).",
+    errReadFailed: "Read failed:",
+    confirmCloseProcessing: "Images are still processing. Closing will abort tasks and clean temp files. Are you sure?",
+    noFailedTasks: "No failed tasks",
+    customSuffixLabel: "Filename suffix (default _min)",
+    closeAlert: "Dismiss alert",
   },
 } as const;
 

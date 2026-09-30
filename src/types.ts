@@ -10,9 +10,10 @@ export interface CompressionConfig {
   conflict_strategy: ConflictStrategy;
   strip_metadata: boolean;
   convert_to_srgb: boolean;
+  suffix?: string;
 }
 
-export type TaskStatus = "pending" | "processing" | "completed" | "error" | "conflict";
+export type TaskStatus = "pending" | "processing" | "completed" | "error" | "conflict" | "skipped";
 
 export interface TaskItem {
   id: string;
@@ -23,6 +24,7 @@ export interface TaskItem {
   width?: number;
   height?: number;
   hasThumbnail?: boolean;
+  thumbnailUrl?: string;
   compressedSize?: number;
   displayCompressedSize?: number; // for 180ms rolling animation
   savingsRatio?: number;
@@ -31,12 +33,21 @@ export interface TaskItem {
   isKeptOriginal?: boolean;
   errorMessage?: string;
   conflictCandidatePath?: string;
+  skipReason?: string;
+  stage?: "decoding" | "encoding" | "writing";
+  priorSavedBytes?: number;
 }
 
 export interface ThumbnailReadyPayload {
   id: string;
-  width: u32;
-  height: u32;
+  width: number;
+  height: number;
+  thumbnail_base64?: string;
+}
+
+export interface TaskStagePayload {
+  id: string;
+  stage: "decoding" | "encoding" | "writing";
 }
 
 export interface TaskCompletedPayload {
@@ -47,6 +58,12 @@ export interface TaskCompletedPayload {
   output_path: string;
   output_format: string;
   is_kept_original: boolean;
+}
+
+export interface TaskSkippedPayload {
+  id: string;
+  reason: string;
+  output_path?: string;
 }
 
 export interface ConflictDetectedPayload {
@@ -64,3 +81,16 @@ export interface BatchFinishedPayload {
 }
 
 export type u32 = number;
+
+export interface ScannedTaskInput {
+  id: string;
+  file_path: string;
+  file_name: string;
+  file_size: number;
+}
+
+export interface ScanResult {
+  tasks: ScannedTaskInput[];
+  avif_count: number;
+  unsupported_count: number;
+}

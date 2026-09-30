@@ -11,6 +11,8 @@ import {
 export function useTauriEvents() {
   const setThumbnailReady = useStore((s) => s.setThumbnailReady);
   const setTaskCompleted = useStore((s) => s.setTaskCompleted);
+  const setTaskSkipped = useStore((s) => s.setTaskSkipped);
+  const setTaskStage = useStore((s) => s.setTaskStage);
   const setTaskError = useStore((s) => s.setTaskError);
   const setConflict = useStore((s) => s.setConflict);
   const checkAndTriggerSummaryModal = useStore((s) => s.checkAndTriggerSummaryModal);
@@ -23,7 +25,12 @@ export function useTauriEvents() {
 
     const setup = async () => {
       const u1 = await listen<ThumbnailReadyPayload>("thumbnail_ready", (e) => {
-        setThumbnailReady(e.payload.id, e.payload.width, e.payload.height);
+        setThumbnailReady(
+          e.payload.id,
+          e.payload.width,
+          e.payload.height,
+          e.payload.thumbnail_base64
+        );
       });
 
       const u2 = await listen<TaskCompletedPayload>("task_completed", (e) => {
@@ -41,14 +48,27 @@ export function useTauriEvents() {
         setConflict(e.payload.id, e.payload.candidate_output_path);
       });
 
-      const u5 = await listen<BatchFinishedPayload>("batch_finished", () => {
-        // 收到後端批次結束通知時，統一檢查全體佇列是否皆已完成
+      const u5 = await listen<{ id: string; reason: string; output_path?: string }>(
+        "task_skipped",
+        (e) => {
+          setTaskSkipped(e.payload);
+        }
+      );
+
+      const u6 = await listen<{ id: string; stage: "decoding" | "encoding" | "writing" }>(
+        "task_stage",
+        (e) => {
+          setTaskStage(e.payload);
+        }
+      );
+
+      const u7 = await listen<BatchFinishedPayload>("batch_finished", () => {
         setTimeout(() => {
           checkAndTriggerSummaryModal();
         }, 200);
       });
 
-      unlistenAll = [u1, u2, u3, u4, u5];
+      unlistenAll = [u1, u2, u3, u4, u5, u6, u7];
     };
 
     setup().catch(console.error);
@@ -56,5 +76,5 @@ export function useTauriEvents() {
     return () => {
       unlistenAll.forEach((fn) => fn());
     };
-  }, [setThumbnailReady, setTaskCompleted, setTaskError, setConflict, checkAndTriggerSummaryModal]);
+  }, [setThumbnailReady, setTaskCompleted, setTaskSkipped, setTaskStage, setTaskError, setConflict, checkAndTriggerSummaryModal]);
 }

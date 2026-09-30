@@ -1,25 +1,35 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useStore } from "../store";
 import { TaskRow } from "./TaskRow";
+import { ResultBar } from "./ResultBar";
 
 export const TaskList: React.FC = () => {
   const taskIds = useStore((s) => s.taskIds);
   const tasks = useStore((s) => s.tasks);
   const parentRef = useRef<HTMLDivElement>(null);
+  const [failedOnly, setFailedOnly] = useState(false);
 
-  const isVirtual = taskIds.length > 100;
+  // 篩選失敗項目
+  const displayTaskIds = failedOnly
+    ? taskIds.filter((id) => tasks[id]?.status === "error")
+    : taskIds;
+
+  const isVirtual = displayTaskIds.length > 100;
 
   // 判斷佇列中所有任務是否皆已處理完畢 (無 pending 或 processing)
   const isAllCompleted =
     taskIds.length > 0 &&
     taskIds.every(
-      (id) => tasks[id]?.status === "completed" || tasks[id]?.status === "error"
+      (id) =>
+        tasks[id]?.status === "completed" ||
+        tasks[id]?.status === "skipped" ||
+        tasks[id]?.status === "error"
     );
   const t = useStore((s) => s.t);
 
   const rowVirtualizer = useVirtualizer({
-    count: taskIds.length,
+    count: displayTaskIds.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 56, // 56px per row per PRD
     overscan: 5,
@@ -28,6 +38,12 @@ export const TaskList: React.FC = () => {
 
   return (
     <div className="flex flex-col flex-1 w-full h-full overflow-hidden select-none">
+      {/* 頂部非阻塞結果列 */}
+      <ResultBar
+        failedOnly={failedOnly}
+        onToggleFailedOnly={() => setFailedOnly((prev) => !prev)}
+      />
+
       {/* 佇列結構表頭 */}
       <div className="flex items-center justify-between h-8 px-3 bg-[var(--bg-surface)] border-b border-[var(--border-subtle)] text-[12px] font-medium text-[var(--text-muted)] select-none flex-shrink-0 z-10">
         <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
@@ -51,7 +67,11 @@ export const TaskList: React.FC = () => {
         ref={parentRef}
         className="flex-1 w-full h-full overflow-y-auto overflow-x-hidden"
       >
-        {isVirtual ? (
+        {displayTaskIds.length === 0 && failedOnly ? (
+          <div className="flex items-center justify-center h-32 text-[13px] text-[var(--text-muted)]">
+            {t("noFailedTasks")}
+          </div>
+        ) : isVirtual ? (
           <div
             style={{
               height: `${rowVirtualizer.getTotalSize()}px`,
@@ -60,7 +80,7 @@ export const TaskList: React.FC = () => {
             }}
           >
             {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-              const id = taskIds[virtualRow.index];
+              const id = displayTaskIds[virtualRow.index];
               const task = tasks[id];
               if (!task) return null;
               return (
@@ -82,7 +102,7 @@ export const TaskList: React.FC = () => {
           </div>
         ) : (
           <div className="flex flex-col w-full">
-            {taskIds.map((id, index) => {
+            {displayTaskIds.map((id, index) => {
               const task = tasks[id];
               if (!task) return null;
               return <TaskRow key={id} task={task} index={index} />;
