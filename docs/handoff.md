@@ -244,7 +244,7 @@ cargo test
   - *討論重點*：當偵測到圖檔 `bpp < 0.8` 時，是在 UI 上提示「已為高壓縮檔案，建議保留原檔」，或是後端自動退回無損轉碼？
 - [ ] **決策點 4：畫質評判閉環的定位取捨（保持極速 vs 引入 Auto 搜尋）**
   - *取捨評估*：是否需要額外新增一個可選的「自動感知模式 (Auto Mode)」，還是維持目前「五段磁吸滑桿 + 4:4:4 啟發式」以維持極限吞吐速度？
-- [x] **決策點 5：落盤機制評估（維持目錄選擇 vs 引入資源回收筒 Undo）**
+- [x] **決策點 5：寫入磁碟機制評估（維持目錄選擇 vs 引入資源回收筒 Undo）**
   - *討論重點*：TinySqueeze 現有的「非破壞性多模式（同目錄/子目錄/自訂）+ 衝突彈窗」對日常辦公非常直覺安全；是否有必要借鑒 Hando 的 `trash` crate 支援原地覆蓋時的 Undo？
 
 ---
@@ -298,7 +298,7 @@ cargo test
 - **具體解決方案**：
   1. **後端原子批次取消 (`cancel_batch`)**：
      - 在 `PipelineState` 增加 `pub is_cancelled: Arc<AtomicBool>`。
-     - 在佇列暫停等待、獲取信號量前後、以及落盤寫入前設置四重檢查點；若檢測到全域取消，直接中止並發出 `task_skipped (reason: "user_cancel")`，且 RAII `TempFileGuard` 自動清除在途暫存檔。
+     - 在佇列暫停等待、獲取信號量前後、以及寫入磁碟前設置四重檢查點；若檢測到全域取消，直接中止並發出 `task_skipped (reason: "user_cancel")`，且 RAII `TempFileGuard` 自動清除在途暫存檔。
      - 實作 `cancel_batch` 指令，將 `is_cancelled` 設為 true、解除暫停狀態、喚醒所有等待 worker 並排空等待中的衝突決策頻道。
   2. **前端即時狀態轉換與反饋**：
      - 在 `src/store.ts` 實作 `cancelAll`：瞬間將所有處理中、等待中與衝突中的任務狀態重設為 `skipped`，清除處理旗標並彈出提示 Toast（「已取消所有處理中任務」），達到零延遲即時 UI 響應。

@@ -7,7 +7,7 @@
 **A lightweight, privacy-first desktop tool for batch image compression and format conversion.**  
 **極致輕量、本機離線的高效能批次圖片壓縮與轉檔工具**
 
-[![Version](https://img.shields.io/badge/version-1.3.3-blue.svg)](https://github.com/kuozher/tinysqueeze/releases)
+[![Version](https://img.shields.io/badge/version-1.3.4-blue.svg)](https://github.com/kuozher/tinysqueeze/releases)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-blue?logo=tauri)](https://tauri.app/)
 [![Rust](https://img.shields.io/badge/Rust-2021-orange?logo=rust)](https://www.rust-lang.org/)
 [![React](https://img.shields.io/badge/React-19-cyan?logo=react)](https://react.dev/)
@@ -172,8 +172,8 @@ TinySqueeze 專注於極致輕快、安全無損的本機圖片壓縮與格式�
 - **🛡️ 負向膨脹防禦與 100% 真無損**：
   - 當品質拉至 100% 時，自動啟動純數學無損編碼。
   - 若壓縮後體積反向膨脹，自動維持原檔輸出，杜絕越壓越大的情況。
-- **💾 原子落盤、立即取消與孤兒暫存防禦**：
-  採暫存檔寫入後原子替換（Atomic Rename），支援「取消全部」立即中斷所有背景執行緒與清掃暫存；搭配冷啟動掃描器，程式異常中斷亦能自動回收孤兒暫存檔。
+- **💾 安全原子寫入、立即取消與孤兒暫存防禦**：
+  採暫存檔寫入後不可分割替換（Atomic Rename），支援「取消全部」立即中斷所有背景執行緒與清掃暫存；搭配冷啟動掃描器，程式異常中斷亦能自動回收孤兒暫存檔。
 - **🌓 高可讀性雙色模式與雙語系支援**：
   淺色模式完全符合 WCAG AAA 高對比規範（綠色底 `#056547` 搭配純白字體），搭配暗色工具箱美學。支援繁體中文與英文即時切換，並完整支援 `Esc` 關閉設定側欄、`C` 清空列表、`R` 快速重跑等鍵盤快捷鍵。
 
@@ -195,8 +195,8 @@ TinySqueeze 專注於極致輕快、安全無損的本機圖片壓縮與格式�
 
 可於 [GitHub Releases](https://github.com/kuozher/tinysqueeze/releases) 取得 Windows (x64) 預編譯檔案：
 
-- **Windows 安裝檔 (`TinySqueeze_1.3.3_x64-setup.exe` / `.msi`)**：標準安裝程式，具備開始功能表捷徑與卸載支援。
-- **免安裝可攜版 (`TinySqueeze_v1.3.3_x64_portable.zip` / `TinySqueeze.exe`)**：解壓縮或直接點擊即可在任何資料夾、USB 隨身碟中執行，不殘留系統註冊表。
+- **Windows 安裝檔 (`TinySqueeze_1.3.4_x64-setup.exe` / `.msi`)**：標準安裝程式，具備開始功能表捷徑與卸載支援。
+- **免安裝可攜版 (`TinySqueeze_v1.3.4_x64_portable.zip` / `TinySqueeze.exe`)**：解壓縮或直接點擊即可在任何資料夾、USB 隨身碟中執行，不殘留系統註冊表。
 
 > [!NOTE]
 > **Windows SmartScreen 提示說明**：  

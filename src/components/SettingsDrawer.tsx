@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { X } from "@phosphor-icons/react";
+import { X, Check } from "@phosphor-icons/react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { useStore } from "../store";
+import { useStore, DEFAULT_CONFIG } from "../store";
 import { ConflictStrategy } from "../types";
 
 export const SettingsDrawer: React.FC = () => {
@@ -9,9 +9,30 @@ export const SettingsDrawer: React.FC = () => {
   const setSettingsOpen = useStore((s) => s.setSettingsOpen);
   const config = useStore((s) => s.config);
   const updateConfig = useStore((s) => s.updateConfig);
+  const resetConfig = useStore((s) => s.resetConfig);
   const locale = useStore((s) => s.locale);
   const setLocale = useStore((s) => s.setLocale);
   const t = useStore((s) => s.t);
+
+  const [showResetNotice, setShowResetNotice] = useState(false);
+
+  const isDefaultConfig =
+    config.quality === DEFAULT_CONFIG.quality &&
+    config.target_format === DEFAULT_CONFIG.target_format &&
+    config.output_dir_mode === DEFAULT_CONFIG.output_dir_mode &&
+    config.conflict_strategy === DEFAULT_CONFIG.conflict_strategy &&
+    config.strip_metadata === DEFAULT_CONFIG.strip_metadata &&
+    config.convert_to_srgb === DEFAULT_CONFIG.convert_to_srgb &&
+    (config.suffix !== undefined ? config.suffix : DEFAULT_CONFIG.suffix) === DEFAULT_CONFIG.suffix &&
+    !config.custom_dir_path;
+
+  const handleResetConfig = () => {
+    resetConfig();
+    setShowResetNotice(true);
+    setTimeout(() => {
+      setShowResetNotice(false);
+    }, 2000);
+  };
 
   const [currentTheme, setCurrentTheme] = useState<"dark" | "light">(() => {
     return (
@@ -145,12 +166,12 @@ export const SettingsDrawer: React.FC = () => {
                 <div className="flex items-center gap-2.5">
                   <input
                     type="text"
-                    value={config.suffix ?? "_min"}
+                    value={config.suffix !== undefined ? config.suffix : "_min"}
                     onChange={(e) => updateConfig({ suffix: e.target.value })}
                     className="w-24 px-2 py-1 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded text-[13px] font-mono focus:border-[var(--accent-green)] focus:outline-none"
                   />
                   <span className="text-[12px] font-mono text-[var(--text-muted)]">
-                    photo.jpg → photo<span className="text-[var(--accent-green)] font-bold">{config.suffix ?? "_min"}</span>.jpg
+                    photo.jpg → photo<span className="text-[var(--accent-green)] font-bold">{config.suffix !== undefined ? config.suffix : "_min"}</span>.jpg
                   </span>
                 </div>
               </div>
@@ -262,6 +283,29 @@ export const SettingsDrawer: React.FC = () => {
               >
                 {t("themeLight")}
               </button>
+            </div>
+          </div>
+
+          {/* 模組 6: 還原設定 */}
+          <div className="space-y-2.5 pt-2 border-t border-[var(--border-subtle)]/50">
+            <label className="font-semibold text-[var(--text-muted)] uppercase tracking-wider text-[10px]">
+              {t("sectionReset")}
+            </label>
+            <div className="flex items-center gap-2.5 min-h-[30px]">
+              <button
+                type="button"
+                disabled={isDefaultConfig}
+                onClick={handleResetConfig}
+                className="px-3 py-1.5 text-center border border-[var(--border-subtle)] bg-[var(--bg-subtle)] hover:bg-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] rounded-[4px] transition-colors cursor-pointer text-[12.5px] font-medium disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[var(--bg-subtle)] disabled:hover:text-[var(--text-muted)] select-none"
+              >
+                {t("btnResetConfig")}
+              </button>
+              {showResetNotice && (
+                <span className="flex items-center gap-1 text-[12px] text-[var(--accent-green)] font-medium select-none animate-in fade-in duration-150">
+                  <Check size={14} weight="bold" />
+                  {t("resetConfigSuccess")}
+                </span>
+              )}
             </div>
           </div>
         </div>

@@ -93,6 +93,9 @@ export const translations = {
     sectionAppearance: "介面外觀",
     themeDark: "強制深色",
     themeLight: "淺色模式",
+    sectionReset: "還原設定",
+    btnResetConfig: "恢復全域預設值",
+    resetConfigSuccess: "已恢復預設",
     escCloseSettings: "按 Esc 關閉設定",
 
     // SummaryModal
@@ -220,6 +223,9 @@ export const translations = {
     sectionAppearance: "Appearance",
     themeDark: "Dark Mode",
     themeLight: "Light Mode",
+    sectionReset: "Reset",
+    btnResetConfig: "Reset All Defaults",
+    resetConfigSuccess: "Defaults restored",
     escCloseSettings: "Press Esc to close settings",
 
     // SummaryModal

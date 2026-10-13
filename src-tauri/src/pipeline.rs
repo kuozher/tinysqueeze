@@ -817,7 +817,7 @@ async fn process_single_task_execution(
             return Err("TASK_CANCELLED".into());
         }
 
-        // 原子落盤管線
+        // 安全原子寫入管線
         let temp_filename = format!(".{}.tinysqueeze_tmp_{}", final_filename, Uuid::new_v4());
         let temp_path = target_dir.join(&temp_filename);
 

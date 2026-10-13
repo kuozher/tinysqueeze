@@ -36,6 +36,13 @@ export const App: React.FC = () => {
     }
   }, []);
 
+  // 啟動時同步持久化設定至 Rust 後端活躍參數
+  useEffect(() => {
+    if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
+      invoke("update_active_config", { config: useStore.getState().config }).catch(console.error);
+    }
+  }, []);
+
   // 視窗尺寸記憶與還原：全新開啟為最小寬度 (720px)，重複開啟為上次關閉前的自訂尺寸
   useEffect(() => {
     if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) {

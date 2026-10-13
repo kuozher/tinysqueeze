@@ -37,6 +37,7 @@ export interface TinySqueezeState {
   setConflict: (id: string, candidatePath: string) => void;
   resolveConflict: (id: string, resolution: "overwrite" | "auto_rename" | "skip") => Promise<void>;
   updateConfig: (partial: Partial<CompressionConfig>) => void;
+  resetConfig: () => void;
   isPaused: boolean;
   setIsPaused: (paused: boolean) => Promise<void>;
   cancelAll: () => Promise<void>;
@@ -55,7 +56,7 @@ export interface TinySqueezeState {
 
 export type TinyPressState = TinySqueezeState;
 
-const DEFAULT_CONFIG: CompressionConfig = {
+export const DEFAULT_CONFIG: CompressionConfig = {
   quality: 75,
   target_format: "original",
   output_dir_mode: "same",
@@ -65,12 +66,37 @@ const DEFAULT_CONFIG: CompressionConfig = {
   suffix: "_min",
 };
 
+const CONFIG_STORAGE_KEY = "tinysqueeze_config";
 const LOCALE_KEY = "tinysqueeze_locale";
+
+function loadSavedConfig(): CompressionConfig {
+  try {
+    const raw = localStorage.getItem(CONFIG_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        return {
+          quality: typeof parsed.quality === "number" ? parsed.quality : DEFAULT_CONFIG.quality,
+          target_format: parsed.target_format || DEFAULT_CONFIG.target_format,
+          output_dir_mode: parsed.output_dir_mode || DEFAULT_CONFIG.output_dir_mode,
+          custom_dir_path: parsed.custom_dir_path,
+          conflict_strategy: parsed.conflict_strategy || DEFAULT_CONFIG.conflict_strategy,
+          strip_metadata: typeof parsed.strip_metadata === "boolean" ? parsed.strip_metadata : DEFAULT_CONFIG.strip_metadata,
+          convert_to_srgb: typeof parsed.convert_to_srgb === "boolean" ? parsed.convert_to_srgb : DEFAULT_CONFIG.convert_to_srgb,
+          suffix: typeof parsed.suffix === "string" ? parsed.suffix : DEFAULT_CONFIG.suffix,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to load saved config from localStorage:", err);
+  }
+  return DEFAULT_CONFIG;
+}
 
 export const useStore = create<TinySqueezeState>((set, get) => ({
   taskIds: [],
   tasks: {},
-  config: DEFAULT_CONFIG,
+  config: loadSavedConfig(),
   configChangedSinceCompleted: false,
   isSettingsOpen: false,
   summaryModalData: null,
@@ -268,6 +294,11 @@ export const useStore = create<TinySqueezeState>((set, get) => ({
   updateConfig: (partial) => {
     set((state) => {
       const newConfig = { ...state.config, ...partial };
+      try {
+        localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(newConfig));
+      } catch (err) {
+        console.warn("Failed to save config to localStorage:", err);
+      }
       if (isTauri()) {
         invoke("update_active_config", { config: newConfig }).catch(console.error);
       }
@@ -279,6 +310,26 @@ export const useStore = create<TinySqueezeState>((set, get) => ({
 
       return {
         config: newConfig,
+        configChangedSinceCompleted: hasCompleted,
+      };
+    });
+  },
+
+  resetConfig: () => {
+    try {
+      localStorage.removeItem(CONFIG_STORAGE_KEY);
+    } catch (err) {
+      console.warn("Failed to remove config from localStorage:", err);
+    }
+    if (isTauri()) {
+      invoke("update_active_config", { config: DEFAULT_CONFIG }).catch(console.error);
+    }
+    set((state) => {
+      const hasCompleted = Object.values(state.tasks).some(
+        (t) => t.status === "completed"
+      );
+      return {
+        config: DEFAULT_CONFIG,
         configChangedSinceCompleted: hasCompleted,
       };
     });
